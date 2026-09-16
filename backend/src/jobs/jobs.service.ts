@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   ForbiddenException,
+  BadRequestException,
   Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -9,6 +10,7 @@ import { Repository } from 'typeorm';
 import { Job } from './entities/job.entity';
 import { User } from '../users/entities/user.entity';
 import { UserRole } from '../users/enums/user-role.enum';
+import { Candidate } from '../candidates/entities/candidate.entity';
 import { CreateJobDto } from './dto/create-job.dto';
 import { UpdateJobDto } from './dto/update-job.dto';
 
@@ -21,7 +23,34 @@ export class JobsService {
     private readonly jobRepository: Repository<Job>,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+    @InjectRepository(Candidate)
+    private readonly candidateRepository: Repository<Candidate>,
   ) {}
+
+  /**
+   * Validate that the requesting user exists and is an HR user.
+   */
+  async validateHrUser(hrId?: number): Promise<User | null> {
+    if (hrId === undefined || hrId === null || isNaN(hrId)) {
+      return null;
+    }
+
+    const user = await this.userRepository.findOne({
+      where: { id: hrId },
+    });
+
+    if (!user) {
+      throw new NotFoundException(`User with ID ${hrId} not found`);
+    }
+
+    if (user.role !== UserRole.HR) {
+      throw new ForbiddenException(
+        `Only HR users are permitted to perform this operation. User '${user.name}' has role '${user.role}'`,
+      );
+    }
+
+    return user;
+  }
 
   /**
    * Create a new job.
@@ -91,11 +120,18 @@ export class JobsService {
    * Update a job by ID.
    * Cannot change created_by.
    */
-  async update(id: number, updateJobDto: UpdateJobDto): Promise<Job> {
-    // 1. Check if the job exists
+  async update(
+    id: number,
+    updateJobDto: UpdateJobDto,
+    hrId?: number,
+  ): Promise<Job> {
+    // 1. Verify HR user if provided
+    await this.validateHrUser(hrId);
+
+    // 2. Check if the job exists
     const existingJob = await this.findOne(id);
 
-    // 2. Merge allowed updates (created_by is not included in UpdateJobDto)
+    // 3. Merge allowed updates (created_by is not included in UpdateJobDto)
     const { title, department, description, required_skills, experience_required, location, status } = updateJobDto;
 
     if (title !== undefined) existingJob.title = title;
@@ -114,12 +150,28 @@ export class JobsService {
 
   /**
    * Delete a job by ID.
+   * Enforces that HR role is verified if hrId is provided,
+   * and prevents deletion if any candidates are associated with this job.
    */
-  async remove(id: number): Promise<{ message: string; id: number }> {
-    // 1. Verify existence
+  async remove(id: number, hrId?: number): Promise<{ message: string; id: number }> {
+    // 1. Verify HR user if provided
+    await this.validateHrUser(hrId);
+
+    // 2. Verify job existence
     await this.findOne(id);
 
-    // 2. Perform delete
+    // 3. Check for associated candidates
+    const candidateCount = await this.candidateRepository.count({
+      where: { job_id: id },
+    });
+
+    if (candidateCount > 0) {
+      throw new BadRequestException(
+        'This job cannot be deleted because candidates are associated with it.',
+      );
+    }
+
+    // 4. Perform delete
     await this.jobRepository.delete(id);
 
     return {

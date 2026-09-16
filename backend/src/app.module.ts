@@ -7,6 +7,11 @@ import { AppService } from './app.service';
 import { UsersModule } from './users/users.module';
 import { JobsModule } from './jobs/jobs.module';
 import { CandidatesModule } from './candidates/candidates.module';
+import { InterviewEvaluationsModule } from './interview-evaluations/interview-evaluations.module';
+import { CompanyModule } from './company/company.module';
+import { EmailModule } from './email/email.module';
+import { AuthModule } from './auth/auth.module';
+import { HrModule } from './hr/hr.module';
 
 @Module({
   imports: [
@@ -60,6 +65,11 @@ import { CandidatesModule } from './candidates/candidates.module';
     UsersModule,
     JobsModule,
     CandidatesModule,
+    InterviewEvaluationsModule,
+    CompanyModule,
+    EmailModule,
+    AuthModule,
+    HrModule,
   ],
   controllers: [AppController],
   providers: [AppService],

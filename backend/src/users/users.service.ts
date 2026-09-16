@@ -8,6 +8,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from './entities/user.entity';
 import { CreateUserDto } from './dto/create-user.dto';
+import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class UsersService {
@@ -32,12 +33,11 @@ export class UsersService {
     }
 
     try {
-      // NOTE: Password hashing placeholder for Phase 3 (Authentication).
-      // Example future implementation: const hashedPassword = await bcrypt.hash(password, 10);
+      const hashedPassword = await bcrypt.hash(password, 10);
       const userToCreate = this.userRepository.create({
         name,
         email,
-        password,
+        password: hashedPassword,
         role,
       });
 
@@ -98,6 +98,15 @@ export class UsersService {
 
     return this.userRepository.findOne({
       where: { email },
+    });
+  }
+
+  /**
+   * Find a user by ID. Password is excluded by default.
+   */
+  async findById(id: number): Promise<User | null> {
+    return this.userRepository.findOne({
+      where: { id },
     });
   }
 }

@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  ForbiddenException,
   Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -12,6 +13,11 @@ import { JobStatus } from '../jobs/enums/job-status.enum';
 import { CandidateStatus } from './enums/candidate-status.enum';
 import { CreateCandidateDto } from './dto/create-candidate.dto';
 import { UpdateCandidateDto } from './dto/update-candidate.dto';
+import { SubmitCandidateDto } from './dto/submit-candidate.dto';
+import { CandidateMatchingService } from './candidate-matching.service';
+import { InterviewEvaluation } from '../interview-evaluations/entities/interview-evaluation.entity';
+import { User } from '../users/entities/user.entity';
+import { UserRole } from '../users/enums/user-role.enum';
 
 @Injectable()
 export class CandidatesService {
@@ -22,6 +28,11 @@ export class CandidatesService {
     private readonly candidateRepository: Repository<Candidate>,
     @InjectRepository(Job)
     private readonly jobRepository: Repository<Job>,
+    @InjectRepository(InterviewEvaluation)
+    private readonly evaluationRepository: Repository<InterviewEvaluation>,
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>,
+    private readonly candidateMatchingService: CandidateMatchingService,
   ) {}
 
   /**
@@ -29,7 +40,7 @@ export class CandidatesService {
    * Enforces that the job exists and its status is OPEN.
    */
   async create(createCandidateDto: CreateCandidateDto): Promise<Candidate> {
-    const { name, email, phone, resume_url, job_id } = createCandidateDto;
+    const { name, email, phone, skills, resume_url, job_id } = createCandidateDto;
 
     // 1. Verify that the job exists
     const job = await this.jobRepository.findOne({
@@ -52,6 +63,7 @@ export class CandidatesService {
       name,
       email,
       phone,
+      skills,
       resume_url,
       status: CandidateStatus.APPLIED,
       job_id: job.id,
@@ -75,6 +87,7 @@ export class CandidatesService {
         name: true,
         email: true,
         phone: true,
+        skills: true,
         resume_url: true,
         status: true,
         job_id: true,
@@ -104,6 +117,7 @@ export class CandidatesService {
         name: true,
         email: true,
         phone: true,
+        skills: true,
         resume_url: true,
         status: true,
         job_id: true,
@@ -148,6 +162,7 @@ export class CandidatesService {
         name: true,
         email: true,
         phone: true,
+        skills: true,
         resume_url: true,
         status: true,
         job_id: true,
@@ -177,11 +192,12 @@ export class CandidatesService {
     const existingCandidate = await this.findOne(id);
 
     // 2. Merge allowed fields
-    const { name, email, phone, resume_url, status } = updateCandidateDto;
+    const { name, email, phone, skills, resume_url, status } = updateCandidateDto;
 
     if (name !== undefined) existingCandidate.name = name;
     if (email !== undefined) existingCandidate.email = email;
     if (phone !== undefined) existingCandidate.phone = phone;
+    if (skills !== undefined) existingCandidate.skills = skills;
     if (resume_url !== undefined) existingCandidate.resume_url = resume_url;
     if (status !== undefined) existingCandidate.status = status;
 
@@ -203,6 +219,342 @@ export class CandidatesService {
     return {
       message: `Candidate with ID ${id} has been deleted successfully`,
       id,
+    };
+  }
+
+  /**
+   * Calculate matching percentage and skills overlap between candidate and job.
+   * Dynamic calculation without storing in DB.
+   */
+  async getMatch(id: number) {
+    const candidate = await this.findOne(id);
+    const matchResult = this.candidateMatchingService.calculateMatch(
+      candidate.skills,
+      candidate.job?.required_skills,
+    );
+
+    return {
+      candidate: {
+        id: candidate.id,
+        name: candidate.name,
+        skills: candidate.skills,
+      },
+      job: {
+        id: candidate.job?.id ?? candidate.job_id,
+        title: candidate.job?.title ?? 'Unknown',
+        required_skills: candidate.job?.required_skills ?? '',
+      },
+      matched_skills: matchResult.matched_skills,
+      missing_skills: matchResult.missing_skills,
+      match_percentage: matchResult.match_percentage,
+    };
+  }
+
+  /**
+   * Retrieve screening summary combining candidate, job, matching details, and interview evaluation.
+   */
+  async getScreening(id: number) {
+    const candidate = await this.findOne(id);
+    const matchResult = this.candidateMatchingService.calculateMatch(
+      candidate.skills,
+      candidate.job?.required_skills,
+    );
+
+    const evaluation = await this.evaluationRepository.findOne({
+      where: { candidate_id: id },
+      relations: ['hr'],
+      select: {
+        id: true,
+        score: true,
+        notes: true,
+        hr: {
+          id: true,
+          name: true,
+          email: true,
+        },
+      },
+    });
+
+    return {
+      candidate: {
+        id: candidate.id,
+        name: candidate.name,
+        email: candidate.email,
+        phone: candidate.phone,
+        skills: candidate.skills,
+        resume_url: candidate.resume_url,
+        status: candidate.status,
+      },
+      job: {
+        id: candidate.job?.id ?? candidate.job_id,
+        title: candidate.job?.title ?? 'Unknown',
+        department: candidate.job?.department ?? '',
+      },
+      match: {
+        required_skills: matchResult.required_skills,
+        matched_skills: matchResult.matched_skills,
+        missing_skills: matchResult.missing_skills,
+        match_percentage: matchResult.match_percentage,
+      },
+      interview_evaluation: evaluation
+        ? {
+            score: evaluation.score,
+            notes: evaluation.notes,
+            hr: {
+              id: evaluation.hr?.id,
+              name: evaluation.hr?.name,
+              email: evaluation.hr?.email,
+            },
+          }
+        : null,
+    };
+  }
+
+  /**
+   * Submit an evaluated candidate to the company.
+   * Enforces that:
+   * - Candidate exists
+   * - HR user exists and has role HR
+   * - Candidate has a valid job
+   * - Candidate status is EVALUATED (cannot submit if APPLIED, SUBMITTED_TO_COMPANY, ACCEPTED, REJECTED)
+   * - Candidate has an interview evaluation
+   * Transitions status to SUBMITTED_TO_COMPANY.
+   */
+  async submitCandidate(
+    candidateId: number,
+    submitCandidateDto: SubmitCandidateDto,
+  ) {
+    const { hr_id } = submitCandidateDto;
+
+    // 1. Find candidate by ID
+    const candidate = await this.candidateRepository.findOne({
+      where: { id: candidateId },
+      relations: ['job'],
+    });
+
+    if (!candidate) {
+      throw new NotFoundException(`Candidate with ID ${candidateId} not found`);
+    }
+
+    // 2. Find HR user by hr_id
+    const hrUser = await this.userRepository.findOne({
+      where: { id: hr_id },
+    });
+
+    if (!hrUser) {
+      throw new NotFoundException(`HR user with ID ${hr_id} not found`);
+    }
+
+    // 3. Verify HR role
+    if (hrUser.role !== UserRole.HR) {
+      throw new ForbiddenException(
+        `Only HR users are permitted to submit candidates. User '${hrUser.name}' has role '${hrUser.role}'`,
+      );
+    }
+
+    // 4. Verify candidate has a job
+    if (!candidate.job) {
+      throw new NotFoundException(
+        `Associated job not found for candidate with ID ${candidateId}`,
+      );
+    }
+
+    // 5. Verify candidate status
+    if (candidate.status === CandidateStatus.SUBMITTED_TO_COMPANY) {
+      throw new BadRequestException(
+        'Candidate has already been submitted to the company.',
+      );
+    }
+
+    if (
+      candidate.status === CandidateStatus.ACCEPTED ||
+      candidate.status === CandidateStatus.REJECTED
+    ) {
+      throw new BadRequestException(
+        `Cannot submit candidate with status ${candidate.status}.`,
+      );
+    }
+
+    if (candidate.status !== CandidateStatus.EVALUATED) {
+      throw new BadRequestException(
+        'Candidate must be evaluated before submission.',
+      );
+    }
+
+    // 6. Verify interview evaluation exists
+    const evaluation = await this.evaluationRepository.findOne({
+      where: { candidate_id: candidateId },
+    });
+
+    if (!evaluation) {
+      throw new BadRequestException(
+        'Candidate must have an interview evaluation before submission.',
+      );
+    }
+
+    // 7. Update candidate status and submitted_by
+    candidate.status = CandidateStatus.SUBMITTED_TO_COMPANY;
+    candidate.submitted_by_id = hrUser.id;
+    candidate.submitted_by = hrUser;
+    await this.candidateRepository.save(candidate);
+
+    this.logger.log(
+      `Candidate ID ${candidate.id} submitted to company by HR User ID ${hrUser.id}`,
+    );
+
+    return {
+      message: 'Candidate submitted to company successfully',
+      candidate: {
+        id: candidate.id,
+        name: candidate.name,
+        email: candidate.email,
+        status: candidate.status,
+      },
+    };
+  }
+
+  /**
+   * Retrieve all candidates with status SUBMITTED_TO_COMPANY sorted newest first.
+   */
+  async findSubmittedCandidates() {
+    const candidates = await this.candidateRepository.find({
+      where: { status: CandidateStatus.SUBMITTED_TO_COMPANY },
+      relations: ['job', 'submitted_by'],
+      order: {
+        updated_at: 'DESC',
+      },
+    });
+
+    const result = await Promise.all(
+      candidates.map(async (c) => {
+        const evaluation = await this.evaluationRepository.findOne({
+          where: { candidate_id: c.id },
+          relations: ['hr'],
+        });
+
+        const matchResult = this.candidateMatchingService.calculateMatch(
+          c.skills,
+          c.job?.required_skills,
+        );
+
+        return {
+          candidate: {
+            id: c.id,
+            name: c.name,
+            email: c.email,
+            phone: c.phone,
+            skills: c.skills,
+            resume_url: c.resume_url,
+            status: c.status,
+          },
+          job: {
+            id: c.job.id,
+            title: c.job.title,
+            department: c.job.department,
+            description: c.job.description,
+            required_skills: c.job.required_skills,
+          },
+          match: {
+            match_percentage: matchResult.match_percentage,
+            matched_skills: matchResult.matched_skills,
+            missing_skills: matchResult.missing_skills,
+          },
+          interview_evaluation: evaluation
+            ? {
+                score: evaluation.score,
+                notes: evaluation.notes,
+              }
+            : null,
+          submitted_by: c.submitted_by
+            ? {
+                id: c.submitted_by.id,
+                name: c.submitted_by.name,
+                email: c.submitted_by.email,
+              }
+            : evaluation?.hr
+            ? {
+                id: evaluation.hr.id,
+                name: evaluation.hr.name,
+                email: evaluation.hr.email,
+              }
+            : null,
+        };
+      }),
+    );
+
+    return result;
+  }
+
+  /**
+   * Retrieve a single submitted candidate by ID.
+   */
+  async findSubmittedCandidateById(id: number) {
+    const candidate = await this.candidateRepository.findOne({
+      where: { id },
+      relations: ['job', 'submitted_by'],
+    });
+
+    if (!candidate) {
+      throw new NotFoundException(`Candidate with ID ${id} not found`);
+    }
+
+    if (candidate.status !== CandidateStatus.SUBMITTED_TO_COMPANY) {
+      throw new NotFoundException(
+        `Submitted candidate with ID ${id} not found`,
+      );
+    }
+
+    const evaluation = await this.evaluationRepository.findOne({
+      where: { candidate_id: id },
+      relations: ['hr'],
+    });
+
+    const matchResult = this.candidateMatchingService.calculateMatch(
+      candidate.skills,
+      candidate.job?.required_skills,
+    );
+
+    return {
+      candidate: {
+        id: candidate.id,
+        name: candidate.name,
+        email: candidate.email,
+        phone: candidate.phone,
+        skills: candidate.skills,
+        resume_url: candidate.resume_url,
+        status: candidate.status,
+      },
+      job: {
+        id: candidate.job.id,
+        title: candidate.job.title,
+        department: candidate.job.department,
+        description: candidate.job.description,
+        required_skills: candidate.job.required_skills,
+      },
+      match: {
+        match_percentage: matchResult.match_percentage,
+        matched_skills: matchResult.matched_skills,
+        missing_skills: matchResult.missing_skills,
+      },
+      interview_evaluation: evaluation
+        ? {
+            score: evaluation.score,
+            notes: evaluation.notes,
+          }
+        : null,
+      submitted_by: candidate.submitted_by
+        ? {
+            id: candidate.submitted_by.id,
+            name: candidate.submitted_by.name,
+            email: candidate.submitted_by.email,
+          }
+        : evaluation?.hr
+        ? {
+            id: evaluation.hr.id,
+            name: evaluation.hr.name,
+            email: evaluation.hr.email,
+          }
+        : null,
     };
   }
 }

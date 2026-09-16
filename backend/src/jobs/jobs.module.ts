@@ -6,9 +6,11 @@ import { JobsService } from './jobs.service';
 import { JobsController } from './jobs.controller';
 import { UsersModule } from '../users/users.module';
 
+import { Candidate } from '../candidates/entities/candidate.entity';
+
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Job, User]),
+    TypeOrmModule.forFeature([Job, User, Candidate]),
     UsersModule,
   ],
   controllers: [JobsController],

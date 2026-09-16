@@ -15,6 +15,10 @@ export class UpdateCandidateDto {
   phone?: string;
 
   @IsOptional()
+  @IsString({ message: 'skills must be a string' })
+  skills?: string;
+
+  @IsOptional()
   @IsString({ message: 'resume_url must be a string' })
   resume_url?: string;
 

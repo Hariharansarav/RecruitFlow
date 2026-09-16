@@ -13,6 +13,7 @@ import {
 import { CandidatesService } from './candidates.service';
 import { CreateCandidateDto } from './dto/create-candidate.dto';
 import { UpdateCandidateDto } from './dto/update-candidate.dto';
+import { SubmitCandidateDto } from './dto/submit-candidate.dto';
 
 @Controller('candidates')
 export class CandidatesController {
@@ -41,6 +42,52 @@ export class CandidatesController {
   @Get('job/:jobId')
   async findByJob(@Param('jobId', ParseIntPipe) jobId: number) {
     return this.candidatesService.findByJob(jobId);
+  }
+
+  /**
+   * GET /candidates/:id/match - Retrieve skills matching calculation
+   */
+  @Get(':id/match')
+  async getMatch(@Param('id', ParseIntPipe) id: number) {
+    return this.candidatesService.getMatch(id);
+  }
+
+  /**
+   * GET /candidates/:id/screening - Retrieve candidate screening summary
+   */
+  @Get(':id/screening')
+  async getScreening(@Param('id', ParseIntPipe) id: number) {
+    return this.candidatesService.getScreening(id);
+  }
+
+  /**
+   * GET /candidates/submitted - Retrieve all submitted candidates
+   * Placed before :id to prevent route collision
+   */
+  @Get('submitted')
+  async findSubmitted() {
+    return this.candidatesService.findSubmittedCandidates();
+  }
+
+  /**
+   * GET /candidates/submitted/:id - Retrieve single submitted candidate details
+   * Placed before :id to prevent route collision
+   */
+  @Get('submitted/:id')
+  async findSubmittedOne(@Param('id', ParseIntPipe) id: number) {
+    return this.candidatesService.findSubmittedCandidateById(id);
+  }
+
+  /**
+   * POST /candidates/:id/submit - Submit evaluated candidate to company
+   */
+  @Post(':id/submit')
+  @HttpCode(HttpStatus.OK)
+  async submit(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() submitCandidateDto: SubmitCandidateDto,
+  ) {
+    return this.candidatesService.submitCandidate(id, submitCandidateDto);
   }
 
   /**

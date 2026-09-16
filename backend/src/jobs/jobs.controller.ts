@@ -6,6 +6,7 @@ import {
   Delete,
   Body,
   Param,
+  Query,
   ParseIntPipe,
   HttpCode,
   HttpStatus,
@@ -50,15 +51,21 @@ export class JobsController {
   async update(
     @Param('id', ParseIntPipe) id: number,
     @Body() updateJobDto: UpdateJobDto,
+    @Query('hr_id') hrId?: string,
   ) {
-    return this.jobsService.update(id, updateJobDto);
+    const parsedHrId = hrId !== undefined ? Number(hrId) : undefined;
+    return this.jobsService.update(id, updateJobDto, parsedHrId);
   }
 
   /**
    * DELETE /jobs/:id - Delete a job by ID
    */
   @Delete(':id')
-  async remove(@Param('id', ParseIntPipe) id: number) {
-    return this.jobsService.remove(id);
+  async remove(
+    @Param('id', ParseIntPipe) id: number,
+    @Query('hr_id') hrId?: string,
+  ) {
+    const parsedHrId = hrId !== undefined ? Number(hrId) : undefined;
+    return this.jobsService.remove(id, parsedHrId);
   }
 }

@@ -1,7 +1,6 @@
 import { NestFactory } from '@nestjs/core';
 import { Logger, ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import process from 'node:process';
 import { AppModule } from './app.module';
 
 // Application bootstrap
@@ -22,11 +21,27 @@ async function bootstrap() {
       }),
     );
 
-    // Enable CORS for frontend communication (e.g. React frontend)
+    // Enable CORS for frontend communication (Next.js on http://localhost:3000)
     app.enableCors({
-      origin: true,
+      origin: ['http://localhost:3000', 'http://127.0.0.1:3000', true],
+      methods: 'GET,POST,PUT,PATCH,DELETE,OPTIONS',
       credentials: true,
     });
+
+    // Support backward-compatible routing so both /jobs and /api/jobs work
+    app.use((req: any, res: any, next: any) => {
+      if (
+        !req.url.startsWith('/api') &&
+        req.url !== '/' &&
+        !req.url.startsWith('/health')
+      ) {
+        req.url = '/api' + req.url;
+      }
+      next();
+    });
+
+    // Set global prefix for REST API endpoints
+    app.setGlobalPrefix('api');
 
     const configService = app.get(ConfigService);
     const port = configService.get<number>('PORT', 5000);
