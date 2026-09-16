@@ -1,9 +1,10 @@
 import { NestFactory } from '@nestjs/core';
-import { Logger } from '@nestjs/common';
+import { Logger, ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import process from 'node:process';
 import { AppModule } from './app.module';
 
+// Application bootstrap
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
 
@@ -11,6 +12,15 @@ async function bootstrap() {
     const app = await NestFactory.create(AppModule, {
       logger: ['error', 'warn', 'log', 'debug', 'verbose'],
     });
+
+    // Enable global validation pipe for DTO validation
+    app.useGlobalPipes(
+      new ValidationPipe({
+        whitelist: true,
+        forbidNonWhitelisted: true,
+        transform: true,
+      }),
+    );
 
     // Enable CORS for frontend communication (e.g. React frontend)
     app.enableCors({
