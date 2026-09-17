@@ -31,10 +31,10 @@ export default function HrLayout({ children }) {
 
   if (checking || !user) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+      <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
-          <div className="w-8 h-8 border-3 border-brand-600 border-t-transparent rounded-full animate-spin" />
-          <p className="text-sm font-medium text-slate-500">Loading workspace...</p>
+          <div className="w-7 h-7 border-2 border-black border-t-transparent rounded-full animate-spin" />
+          <p className="text-xs font-semibold uppercase tracking-wider text-zinc-400">Loading workspace...</p>
         </div>
       </div>
     );

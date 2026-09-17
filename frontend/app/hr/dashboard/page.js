@@ -10,11 +10,9 @@ import {
   Send,
   UserCheck,
   UserX,
-  RefreshCw,
   Plus,
   ArrowRight,
   AlertCircle,
-  MapPin,
   Building2,
   Calendar,
 } from 'lucide-react';
@@ -87,7 +85,6 @@ export default function HrDashboardPage() {
     }
   };
 
-  // Format candidate status text for display
   const getCandidateStatusDisplay = (status) => {
     switch (status) {
       case 'SUBMITTED_TO_COMPANY':
@@ -105,48 +102,42 @@ export default function HrDashboardPage() {
   };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 sm:space-y-8">
       {/* 1. Header & Welcome */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2 border-b border-slate-200">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-5 border-b border-zinc-200">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
-            Welcome back, {user?.name || 'Recruiter'}
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-zinc-950 tracking-tight">
+            Dashboard
           </h1>
-          <p className="text-sm text-slate-500 mt-1">
-            Here&apos;s an overview of your recruitment activity.
+          <p className="text-sm text-zinc-500 mt-1">
+            Welcome back, <span className="text-zinc-900 font-medium">{user?.name || 'Recruiter'}</span>. Here is your candidate pipeline overview.
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <Button
-            variant="outline"
-            onClick={handleRefresh}
-            disabled={loading || refreshing}
-            className="flex items-center gap-2"
-          >
-            <RefreshCw
-              className={`w-4 h-4 ${refreshing ? 'animate-spin text-brand-600' : ''}`}
-            />
-            <span>{refreshing ? 'Refreshing...' : 'Refresh'}</span>
-          </Button>
+          <Link href="/hr/jobs">
+            <Button variant="primary" size="sm" className="flex items-center gap-1.5">
+              <Plus className="w-4 h-4" />
+              <span>Create Job</span>
+            </Button>
+          </Link>
         </div>
       </div>
 
       {/* 2. Error State with Retry */}
       {error && (
-        <div className="bg-rose-50 border border-rose-200 rounded-xl p-6 text-center max-w-xl mx-auto shadow-sm">
-          <div className="w-12 h-12 bg-rose-100 text-rose-600 rounded-full flex items-center justify-center mx-auto mb-3">
+        <div className="bg-rose-50 border border-rose-200 rounded-2xl p-6 text-center max-w-xl mx-auto shadow-xs">
+          <div className="w-12 h-12 bg-rose-100 text-rose-600 rounded-2xl flex items-center justify-center mx-auto mb-3">
             <AlertCircle className="w-6 h-6" />
           </div>
-          <h2 className="text-lg font-bold text-slate-900 mb-1">
-            Dashboard Error
+          <h2 className="text-lg font-bold text-zinc-950 mb-1">
+            Unable to load dashboard data
           </h2>
-          <p className="text-sm text-slate-600 mb-4">{error}</p>
+          <p className="text-sm text-zinc-600 mb-4">{error}</p>
           <Button
             variant="primary"
-            onClick={() => user && fetchDashboardData(user.id)}
+            onClick={handleRefresh}
             className="inline-flex items-center gap-2"
           >
-            <RefreshCw className="w-4 h-4" />
             Retry
           </Button>
         </div>
@@ -154,48 +145,29 @@ export default function HrDashboardPage() {
 
       {/* 3. Loading Skeleton State */}
       {loading && !error && (
-        <div className="space-y-8">
-          {/* Skeleton Stats Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[...Array(6)].map((_, i) => (
+        <div className="space-y-6 animate-pulse">
+          {/* 4 Skeleton Stat Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
+            {[...Array(4)].map((_, i) => (
               <div
                 key={i}
-                className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm animate-pulse space-y-4"
+                className="bg-white border border-zinc-200/80 rounded-2xl p-6 shadow-xs space-y-4"
               >
                 <div className="flex items-center justify-between">
-                  <div className="h-4 bg-slate-200 rounded w-28" />
-                  <div className="w-10 h-10 bg-slate-200 rounded-lg" />
+                  <div className="h-3.5 bg-zinc-200 rounded w-24" />
+                  <div className="w-9 h-9 bg-zinc-200 rounded-xl" />
                 </div>
-                <div className="h-8 bg-slate-200 rounded w-16" />
-                <div className="h-3 bg-slate-200 rounded w-36" />
+                <div className="h-8 bg-zinc-200 rounded w-16" />
+                <div className="h-3 bg-zinc-100 rounded w-32" />
               </div>
             ))}
           </div>
 
-          {/* Skeleton Quick Actions */}
-          <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm animate-pulse space-y-3">
-            <div className="h-4 bg-slate-200 rounded w-24 mb-4" />
-            <div className="flex flex-wrap gap-3">
-              <div className="h-10 bg-slate-200 rounded-lg w-32" />
-              <div className="h-10 bg-slate-200 rounded-lg w-36" />
-              <div className="h-10 bg-slate-200 rounded-lg w-40" />
-            </div>
-          </div>
+          <div className="h-16 bg-white border border-zinc-200/80 rounded-2xl" />
 
-          {/* Skeleton Recent Sections */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm animate-pulse space-y-4">
-              <div className="h-5 bg-slate-200 rounded w-36 mb-4" />
-              {[...Array(4)].map((_, j) => (
-                <div key={j} className="h-12 bg-slate-100 rounded-lg" />
-              ))}
-            </div>
-            <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm animate-pulse space-y-4">
-              <div className="h-5 bg-slate-200 rounded w-32 mb-4" />
-              {[...Array(4)].map((_, j) => (
-                <div key={j} className="h-12 bg-slate-100 rounded-lg" />
-              ))}
-            </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="h-64 bg-white border border-zinc-200/80 rounded-2xl" />
+            <div className="h-64 bg-white border border-zinc-200/80 rounded-2xl" />
           </div>
         </div>
       )}
@@ -203,96 +175,157 @@ export default function HrDashboardPage() {
       {/* 4. Live Dashboard Content */}
       {!loading && !error && (
         <>
-          {/* Primary Statistics Grid (3 cols on desktop, 2 on tablet, 1 on mobile) */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {/* Focused 4 Executive Stat Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
             <StatCard
               icon={Briefcase}
               label="Open Jobs"
               value={stats?.open_jobs ?? 0}
-              description="Active open requisitions"
-              color="brand"
+              description="Active requisitions"
+              color="blue"
             />
             <StatCard
               icon={Users}
-              label="Total Candidates"
+              label="Total Pipeline"
               value={stats?.total_candidates ?? 0}
-              description="Applicants across all jobs"
-              color="sky"
-            />
-            <StatCard
-              icon={ClipboardCheck}
-              label="Evaluated"
-              value={stats?.evaluated_candidates ?? 0}
-              description="Completed interview screening"
-              color="violet"
+              description="Total talent in review"
+              color="zinc"
             />
             <StatCard
               icon={Send}
-              label="Submitted to Company"
+              label="Awaiting Review"
               value={stats?.submitted_candidates ?? 0}
-              description="Awaiting company review"
-              color="amber"
+              description="Submitted to company"
+              color="indigo"
             />
             <StatCard
               icon={UserCheck}
-              label="Accepted"
+              label="Hired Candidates"
               value={stats?.accepted_candidates ?? 0}
-              description="Hired by company"
+              description="Accepted placements"
               color="emerald"
-            />
-            <StatCard
-              icon={UserX}
-              label="Rejected"
-              value={stats?.rejected_candidates ?? 0}
-              description="Archived / rejected"
-              color="rose"
             />
           </div>
 
-          {/* Quick Actions */}
-          <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
-            <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-500 mb-4">
-              Quick Actions
-            </h2>
-            <div className="flex flex-wrap gap-3">
-              <Link href="/hr/jobs">
-                <Button variant="primary" className="flex items-center gap-2">
-                  <Plus className="w-4 h-4" />
-                  Create Job
-                </Button>
-              </Link>
+          {/* Compact Pipeline Status Distribution Strip */}
+          <div className="bg-white border border-zinc-200/90 rounded-2xl p-5 shadow-xs">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
+              <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
+                Pipeline Lifecycle Breakdown
+              </h2>
+              <span className="text-xs text-zinc-500 font-medium">
+                Total candidates: {stats?.total_candidates ?? 0}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 pt-1">
+              <div className="bg-zinc-50 border border-zinc-200/70 rounded-xl p-3 flex items-center justify-between">
+                <div>
+                  <span className="text-xs text-zinc-500 font-medium block">Applied</span>
+                  <span className="text-lg font-bold text-zinc-900">
+                    {(stats?.total_candidates ?? 0) -
+                      ((stats?.evaluated_candidates ?? 0) +
+                        (stats?.submitted_candidates ?? 0) +
+                        (stats?.accepted_candidates ?? 0) +
+                        (stats?.rejected_candidates ?? 0)) > 0
+                      ? (stats?.total_candidates ?? 0) -
+                        ((stats?.evaluated_candidates ?? 0) +
+                          (stats?.submitted_candidates ?? 0) +
+                          (stats?.accepted_candidates ?? 0) +
+                          (stats?.rejected_candidates ?? 0))
+                      : 0}
+                  </span>
+                </div>
+                <Badge status="APPLIED">Applied</Badge>
+              </div>
+
+              <div className="bg-amber-50/40 border border-amber-200/70 rounded-xl p-3 flex items-center justify-between">
+                <div>
+                  <span className="text-xs text-amber-900/80 font-medium block">Evaluated</span>
+                  <span className="text-lg font-bold text-amber-950">
+                    {stats?.evaluated_candidates ?? 0}
+                  </span>
+                </div>
+                <Badge status="EVALUATED">Evaluated</Badge>
+              </div>
+
+              <div className="bg-blue-50/40 border border-blue-200/70 rounded-xl p-3 flex items-center justify-between">
+                <div>
+                  <span className="text-xs text-blue-900/80 font-medium block">Submitted</span>
+                  <span className="text-lg font-bold text-blue-950">
+                    {stats?.submitted_candidates ?? 0}
+                  </span>
+                </div>
+                <Badge status="SUBMITTED_TO_COMPANY">Submitted</Badge>
+              </div>
+
+              <div className="bg-emerald-50/40 border border-emerald-200/70 rounded-xl p-3 flex items-center justify-between">
+                <div>
+                  <span className="text-xs text-emerald-900/80 font-medium block">Accepted</span>
+                  <span className="text-lg font-bold text-emerald-950">
+                    {stats?.accepted_candidates ?? 0}
+                  </span>
+                </div>
+                <Badge status="ACCEPTED">Accepted</Badge>
+              </div>
+
+              <div className="bg-rose-50/40 border border-rose-200/70 rounded-xl p-3 flex items-center justify-between">
+                <div>
+                  <span className="text-xs text-rose-900/80 font-medium block">Rejected</span>
+                  <span className="text-lg font-bold text-rose-950">
+                    {stats?.rejected_candidates ?? 0}
+                  </span>
+                </div>
+                <Badge status="REJECTED">Rejected</Badge>
+              </div>
+            </div>
+          </div>
+
+          {/* Quick Actions Bar */}
+          <div className="bg-white border border-zinc-200/90 rounded-2xl p-5 shadow-xs flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <h2 className="text-sm font-bold text-zinc-950">Quick Navigation</h2>
+              <p className="text-xs text-zinc-500 mt-0.5">Jump directly to your active hiring workflows.</p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2.5">
               <Link href="/hr/candidates">
-                <Button variant="secondary" className="flex items-center gap-2">
-                  <Users className="w-4 h-4 text-slate-600" />
-                  View Candidates
+                <Button variant="secondary" size="sm" className="flex items-center gap-1.5">
+                  <Users className="w-3.5 h-3.5 text-zinc-700" />
+                  <span>View All Candidates</span>
                 </Button>
               </Link>
               <Link href="/hr/evaluations">
-                <Button variant="outline" className="flex items-center gap-2">
-                  <ClipboardCheck className="w-4 h-4 text-slate-600" />
-                  View Evaluations
+                <Button variant="outline" size="sm" className="flex items-center gap-1.5">
+                  <ClipboardCheck className="w-3.5 h-3.5 text-zinc-700" />
+                  <span>Screening Evaluations</span>
+                </Button>
+              </Link>
+              <Link href="/hr/jobs">
+                <Button variant="secondary" size="sm" className="flex items-center gap-1.5">
+                  <Briefcase className="w-3.5 h-3.5 text-zinc-700" />
+                  <span>Job Requisitions</span>
                 </Button>
               </Link>
             </div>
           </div>
 
-          {/* Recent Candidates & Recent Jobs (2 cols on desktop, 1 col on mobile) */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* Recent Candidates & Recent Jobs */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Recent Candidates */}
-            <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden flex flex-col justify-between">
+            <div className="bg-white border border-zinc-200/90 rounded-2xl shadow-xs overflow-hidden flex flex-col justify-between">
               <div>
-                <div className="p-6 pb-4 border-b border-slate-100 flex items-center justify-between">
+                <div className="p-5 pb-4 border-b border-zinc-100 flex items-center justify-between">
                   <div>
-                    <h2 className="text-lg font-bold text-slate-900">
+                    <h2 className="text-base font-bold text-zinc-950 tracking-tight">
                       Recent Candidates
                     </h2>
-                    <p className="text-xs text-slate-500 mt-0.5">
-                      Latest applicant submissions
+                    <p className="text-xs text-zinc-400 mt-0.5">
+                      Latest applicant entries in pipeline
                     </p>
                   </div>
                   <Link
                     href="/hr/candidates"
-                    className="text-xs font-semibold text-brand-600 hover:text-brand-700 flex items-center gap-1 transition-colors"
+                    className="text-xs font-semibold text-zinc-900 hover:text-black flex items-center gap-1 transition-colors"
                   >
                     View all <ArrowRight className="w-3.5 h-3.5" />
                   </Link>
@@ -300,46 +333,49 @@ export default function HrDashboardPage() {
 
                 {recentCandidates.length === 0 ? (
                   <div className="p-8 text-center">
-                    <div className="w-12 h-12 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center mx-auto mb-3">
+                    <div className="w-12 h-12 bg-zinc-100 text-zinc-400 rounded-2xl flex items-center justify-center mx-auto mb-3">
                       <Users className="w-6 h-6" />
                     </div>
-                    <p className="text-sm font-semibold text-slate-700">
+                    <p className="text-sm font-semibold text-zinc-800">
                       No candidates yet.
                     </p>
-                    <p className="text-xs text-slate-500 max-w-xs mx-auto mt-1 mb-4">
-                      Once candidates are added, your recent candidates will appear here.
+                    <p className="text-xs text-zinc-400 max-w-xs mx-auto mt-1 mb-4">
+                      Add candidates to start screening and comparing against job requirements.
                     </p>
-                    <Link href="/hr/candidates">
+                    <Link href="/hr/candidates/create">
                       <Button variant="outline" size="sm">
-                        View Candidates
+                        + Add Candidate
                       </Button>
                     </Link>
                   </div>
                 ) : (
-                  <div className="divide-y divide-slate-100">
+                  <div className="divide-y divide-zinc-100">
                     {recentCandidates.map((candidate) => (
                       <div
                         key={candidate.id}
-                        className="p-4 hover:bg-slate-50/70 transition-colors flex items-center justify-between gap-4"
+                        className="p-4 hover:bg-zinc-50/70 transition-colors flex items-center justify-between gap-4"
                       >
                         <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm font-semibold text-slate-900 truncate">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <Link
+                              href={`/hr/candidates/${candidate.id}`}
+                              className="text-sm font-semibold text-zinc-950 hover:text-zinc-700 truncate"
+                            >
                               {candidate.name}
-                            </span>
+                            </Link>
                             <Badge status={candidate.status}>
                               {getCandidateStatusDisplay(candidate.status)}
                             </Badge>
                           </div>
-                          <div className="flex items-center gap-3 text-xs text-slate-500 mt-1">
+                          <div className="flex items-center gap-2 text-xs text-zinc-400 mt-1 truncate">
                             <span className="truncate">{candidate.email}</span>
                             <span>•</span>
-                            <span className="truncate text-slate-600 font-medium">
-                              {candidate.job?.title || 'General Applicant'}
+                            <span className="truncate text-zinc-600 font-medium">
+                              {candidate.job?.title || 'General'}
                             </span>
                           </div>
                         </div>
-                        <div className="text-right flex-shrink-0 text-xs text-slate-400 font-medium">
+                        <div className="text-right flex-shrink-0 text-xs text-zinc-400 font-medium">
                           {formatDate(candidate.created_at)}
                         </div>
                       </div>
@@ -350,20 +386,20 @@ export default function HrDashboardPage() {
             </div>
 
             {/* Recent Jobs */}
-            <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden flex flex-col justify-between">
+            <div className="bg-white border border-zinc-200/90 rounded-2xl shadow-xs overflow-hidden flex flex-col justify-between">
               <div>
-                <div className="p-6 pb-4 border-b border-slate-100 flex items-center justify-between">
+                <div className="p-5 pb-4 border-b border-zinc-100 flex items-center justify-between">
                   <div>
-                    <h2 className="text-lg font-bold text-slate-900">
+                    <h2 className="text-base font-bold text-zinc-950 tracking-tight">
                       Recent Jobs
                     </h2>
-                    <p className="text-xs text-slate-500 mt-0.5">
+                    <p className="text-xs text-zinc-400 mt-0.5">
                       Latest requisition postings
                     </p>
                   </div>
                   <Link
                     href="/hr/jobs"
-                    className="text-xs font-semibold text-brand-600 hover:text-brand-700 flex items-center gap-1 transition-colors"
+                    className="text-xs font-semibold text-zinc-900 hover:text-black flex items-center gap-1 transition-colors"
                   >
                     View all <ArrowRight className="w-3.5 h-3.5" />
                   </Link>
@@ -371,49 +407,49 @@ export default function HrDashboardPage() {
 
                 {recentJobs.length === 0 ? (
                   <div className="p-8 text-center">
-                    <div className="w-12 h-12 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center mx-auto mb-3">
+                    <div className="w-12 h-12 bg-zinc-100 text-zinc-400 rounded-2xl flex items-center justify-center mx-auto mb-3">
                       <Briefcase className="w-6 h-6" />
                     </div>
-                    <p className="text-sm font-semibold text-slate-700">
+                    <p className="text-sm font-semibold text-zinc-800">
                       No jobs created yet.
                     </p>
-                    <p className="text-xs text-slate-500 max-w-xs mx-auto mt-1 mb-4">
-                      Create your first job to start recruiting candidates.
+                    <p className="text-xs text-zinc-400 max-w-xs mx-auto mt-1 mb-4">
+                      Create job descriptions to screen candidates against required skills.
                     </p>
-                    <Link href="/hr/jobs">
+                    <Link href="/hr/jobs/create">
                       <Button variant="primary" size="sm">
-                        Create Job
+                        + Create Job
                       </Button>
                     </Link>
                   </div>
                 ) : (
-                  <div className="divide-y divide-slate-100">
+                  <div className="divide-y divide-zinc-100">
                     {recentJobs.map((job) => (
                       <div
                         key={job.id}
-                        className="p-4 hover:bg-slate-50/70 transition-colors flex items-center justify-between gap-4"
+                        className="p-4 hover:bg-zinc-50/70 transition-colors flex items-center justify-between gap-4"
                       >
                         <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm font-semibold text-slate-900 truncate">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <Link
+                              href={`/hr/jobs/${job.id}`}
+                              className="text-sm font-semibold text-zinc-950 hover:text-zinc-700 truncate"
+                            >
                               {job.title}
-                            </span>
-                            <Badge status={job.status}>{job.status}</Badge>
+                            </Link>
+                            <Badge status={job.status}>
+                              {job.status}
+                            </Badge>
                           </div>
-                          <div className="flex items-center gap-3 text-xs text-slate-500 mt-1">
-                            <span className="flex items-center gap-1">
-                              <Building2 className="w-3 h-3 text-slate-400" />
-                              {job.department || 'General'}
-                            </span>
+                          <div className="flex items-center gap-2 text-xs text-zinc-400 mt-1 truncate">
+                            <span className="truncate">{job.department}</span>
                             <span>•</span>
-                            <span className="flex items-center gap-1">
-                              <MapPin className="w-3 h-3 text-slate-400" />
-                              {job.location || 'Remote'}
+                            <span className="truncate text-zinc-500">
+                              {job.candidate_count ?? 0} applicants
                             </span>
                           </div>
                         </div>
-                        <div className="text-right flex-shrink-0 text-xs text-slate-400 font-medium flex items-center gap-1">
-                          <Calendar className="w-3 h-3" />
+                        <div className="text-right flex-shrink-0 text-xs text-zinc-400 font-medium">
                           {formatDate(job.created_at)}
                         </div>
                       </div>

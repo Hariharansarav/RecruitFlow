@@ -37,9 +37,9 @@ export class CompanyService {
   /**
    * Validates that the provided companyId corresponds to an existing user with role COMPANY.
    */
-  async validateCompanyUser(companyId?: number): Promise<User | null> {
+  async validateCompanyUser(companyId?: number): Promise<User> {
     if (companyId === undefined || companyId === null || isNaN(companyId)) {
-      return null;
+      throw new BadRequestException('company_id query parameter is required');
     }
 
     const user = await this.userRepository.findOne({
@@ -92,6 +92,24 @@ export class CompanyService {
   }
 
   /**
+   * Normalizes comma-separated required skills from Job JD.
+   */
+  normalizeSkills(skillsStr?: string | null): string[] {
+    if (!skillsStr || typeof skillsStr !== 'string') return [];
+    const seen = new Set<string>();
+    const result: string[] = [];
+    for (const item of skillsStr.split(',')) {
+      const trimmed = item.trim();
+      const lower = trimmed.toLowerCase();
+      if (trimmed.length > 0 && !seen.has(lower)) {
+        seen.add(lower);
+        result.push(trimmed);
+      }
+    }
+    return result;
+  }
+
+  /**
    * Retrieve list of candidates submitted to company.
    * Can be filtered by a specific status (e.g. ACCEPTED, REJECTED, SUBMITTED_TO_COMPANY),
    * or returns all relevant reviewable candidates (SUBMITTED_TO_COMPANY, ACCEPTED, REJECTED).
@@ -122,12 +140,23 @@ export class CompanyService {
       candidates.map(async (c) => {
         const evaluation = await this.evaluationRepository.findOne({
           where: { candidate_id: c.id },
+          relations: ['skills'],
         });
 
-        const matchResult = this.candidateMatchingService.calculateMatch(
-          c.skills,
-          c.job?.required_skills,
-        );
+        const requiredSkills = this.normalizeSkills(c.job?.required_skills);
+        const maxScore = requiredSkills.length * 5;
+        let matchPercentage = 0;
+        let overallScore: number | null = null;
+
+        if (evaluation) {
+          overallScore = Number(evaluation.score);
+          const totalScore =
+            evaluation.skills && evaluation.skills.length > 0
+              ? evaluation.skills.reduce((sum, s) => sum + Number(s.score), 0)
+              : Math.round(overallScore * requiredSkills.length);
+          matchPercentage =
+            maxScore > 0 ? Math.round((totalScore / maxScore) * 100) : 0;
+        }
 
         return {
           id: c.id,
@@ -137,15 +166,17 @@ export class CompanyService {
           skills: c.skills,
           resume_url: c.resume_url,
           status: c.status,
+          created_at: c.created_at,
+          updated_at: c.updated_at,
           job: {
             id: c.job.id,
             title: c.job.title,
             department: c.job.department,
           },
-          match_percentage: matchResult.match_percentage,
+          match_percentage: matchPercentage,
           interview: evaluation
             ? {
-                score: evaluation.score,
+                score: overallScore,
                 notes: evaluation.notes,
               }
             : null,
@@ -155,6 +186,7 @@ export class CompanyService {
 
     return result;
   }
+
 
   /**
    * Retrieve pending candidates (status = SUBMITTED_TO_COMPANY).
@@ -253,7 +285,7 @@ export class CompanyService {
 
       if (emailSent) {
         return {
-          message: 'Candidate rejected and rejection email sent successfully.',
+          message: 'Candidate rejected and notification email sent successfully.',
           candidate: {
             id: candidate.id,
             name: candidate.name,
@@ -303,13 +335,24 @@ export class CompanyService {
 
     const evaluation = await this.evaluationRepository.findOne({
       where: { candidate_id: id },
-      relations: ['hr'],
+      relations: ['hr', 'skills'],
     });
 
-    const matchResult = this.candidateMatchingService.calculateMatch(
-      candidate.skills,
-      candidate.job?.required_skills,
-    );
+    const requiredSkills = this.normalizeSkills(candidate.job.required_skills);
+    const maxScore = requiredSkills.length * 5;
+    let matchPercentage = 0;
+    let overallScore: number | null = null;
+    let totalScore = 0;
+
+    if (evaluation) {
+      overallScore = Number(evaluation.score);
+      totalScore =
+        evaluation.skills && evaluation.skills.length > 0
+          ? evaluation.skills.reduce((sum, s) => sum + Number(s.score), 0)
+          : Math.round(overallScore * requiredSkills.length);
+      matchPercentage =
+        maxScore > 0 ? Math.round((totalScore / maxScore) * 100) : 0;
+    }
 
     return {
       candidate: {
@@ -325,20 +368,41 @@ export class CompanyService {
         id: candidate.job.id,
         title: candidate.job.title,
         department: candidate.job.department,
+        location: candidate.job.location || 'Remote',
+        experience_required: candidate.job.experience_required || 'Not specified',
         description: candidate.job.description,
         required_skills: candidate.job.required_skills,
       },
       match: {
-        match_percentage: matchResult.match_percentage,
-        matched_skills: matchResult.matched_skills,
-        missing_skills: matchResult.missing_skills,
+        match_percentage: matchPercentage,
+        total_score: totalScore,
+        maximum_score: maxScore,
+        overall_score: overallScore,
+        required_skills: requiredSkills,
       },
       interview_evaluation: evaluation
         ? {
-            score: evaluation.score,
+            id: evaluation.id,
+            score: overallScore,
             notes: evaluation.notes,
+            skills:
+              evaluation.skills?.map((s) => ({
+                id: s.id,
+                skill: s.skill,
+                score: Number(s.score),
+              })) || [],
+            created_at: evaluation.created_at,
+            updated_at: evaluation.updated_at,
+            hr: evaluation.hr
+              ? {
+                  id: evaluation.hr.id,
+                  name: evaluation.hr.name,
+                  email: evaluation.hr.email,
+                }
+              : null,
           }
         : null,
+
       submitted_by: candidate.submitted_by
         ? {
             id: candidate.submitted_by.id,

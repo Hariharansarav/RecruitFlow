@@ -20,9 +20,9 @@ export class CreateCandidateDto {
   @IsString({ message: 'Phone must be a string' })
   phone: string;
 
-  @IsNotEmpty({ message: 'Skills are required' })
+  @IsOptional()
   @IsString({ message: 'Skills must be a string' })
-  skills: string;
+  skills?: string;
 
   @IsOptional()
   @IsString({ message: 'resume_url must be a string' })

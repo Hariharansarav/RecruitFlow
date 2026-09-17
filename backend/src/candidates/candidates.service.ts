@@ -58,12 +58,12 @@ export class CandidatesService {
       );
     }
 
-    // 3. Create candidate with status APPLIED
+    // 3. Create candidate with status APPLIED (skills optional, defaults to '')
     const candidate = this.candidateRepository.create({
       name,
       email,
       phone,
-      skills,
+      skills: skills || '',
       resume_url,
       status: CandidateStatus.APPLIED,
       job_id: job.id,
@@ -71,9 +71,36 @@ export class CandidatesService {
     });
 
     const savedCandidate = await this.candidateRepository.save(candidate);
+    CandidatesService.invalidateCache();
 
     // Return candidate with basic job info
     return this.findOne(savedCandidate.id);
+  }
+
+
+  /**
+   * Validate that the requesting user exists and is an HR user.
+   */
+  async validateHrUser(hrId?: number): Promise<User | null> {
+    if (hrId === undefined || hrId === null || isNaN(hrId)) {
+      return null;
+    }
+
+    const user = await this.userRepository.findOne({
+      where: { id: hrId },
+    });
+
+    if (!user) {
+      throw new NotFoundException(`User with ID ${hrId} not found`);
+    }
+
+    if (user.role !== UserRole.HR) {
+      throw new ForbiddenException(
+        `Only HR users are permitted to perform this operation. User '${user.name}' has role '${user.role}'`,
+      );
+    }
+
+    return user;
   }
 
   /**
@@ -104,6 +131,108 @@ export class CandidatesService {
       },
     });
   }
+
+  /**
+   * Normalizes comma-separated required skills from Job JD.
+   */
+  normalizeSkills(skillsStr?: string | null): string[] {
+    if (!skillsStr || typeof skillsStr !== 'string') return [];
+    const seen = new Set<string>();
+    const result: string[] = [];
+    for (const item of skillsStr.split(',')) {
+      const trimmed = item.trim();
+      const lower = trimmed.toLowerCase();
+      if (trimmed.length > 0 && !seen.has(lower)) {
+        seen.add(lower);
+        result.push(trimmed);
+      }
+    }
+    return result;
+  }
+
+  private static cachedScreeningData: any = null;
+  private static cacheExpiresAt: number = 0;
+  private static readonly CACHE_TTL_MS: number = 30000;
+
+  public static invalidateCache() {
+    CandidatesService.cachedScreeningData = null;
+    CandidatesService.cacheExpiresAt = 0;
+  }
+
+  /**
+   * Return all candidates with pre-calculated JD matching details.
+   */
+  async findAllWithScreening() {
+    const now = Date.now();
+    if (CandidatesService.cachedScreeningData && now < CandidatesService.cacheExpiresAt) {
+      return CandidatesService.cachedScreeningData;
+    }
+
+    const candidates = await this.candidateRepository.find({
+      relations: ['job'],
+      order: {
+        created_at: 'DESC',
+      },
+    });
+
+    const evaluations = await this.evaluationRepository.find({
+      relations: ['skills'],
+    });
+
+    const evalMap = new Map<number, InterviewEvaluation>();
+    for (const ev of evaluations) {
+      evalMap.set(ev.candidate_id, ev);
+    }
+
+    const result = candidates.map((c) => {
+      const evaluation = evalMap.get(c.id);
+      const requiredSkills = this.normalizeSkills(c.job?.required_skills);
+      const maxScore = requiredSkills.length * 5;
+
+      let matchPercentage: number | null = null;
+      let overallScore: number | null = null;
+
+      if (evaluation) {
+        overallScore = Number(evaluation.score);
+        const totalScore =
+          evaluation.skills && evaluation.skills.length > 0
+            ? evaluation.skills.reduce((sum, s) => sum + Number(s.score), 0)
+            : Math.round(overallScore * requiredSkills.length);
+
+        matchPercentage =
+          maxScore > 0 ? Math.round((totalScore / maxScore) * 100) : 0;
+      }
+
+      return {
+        id: c.id,
+        name: c.name,
+        email: c.email,
+        phone: c.phone,
+        skills: c.skills,
+        resume_url: c.resume_url,
+        status: c.status,
+        job_id: c.job_id,
+        job: c.job
+          ? {
+              id: c.job.id,
+              title: c.job.title,
+              department: c.job.department,
+              required_skills: c.job.required_skills,
+            }
+          : null,
+        match_percentage: matchPercentage,
+        overall_score: overallScore,
+        interview_score: overallScore,
+        created_at: c.created_at,
+        updated_at: c.updated_at,
+      };
+    });
+
+    CandidatesService.cachedScreeningData = result;
+    CandidatesService.cacheExpiresAt = now + CandidatesService.CACHE_TTL_MS;
+    return result;
+  }
+
 
   /**
    * Return single candidate by ID with related job details.
@@ -187,21 +316,24 @@ export class CandidatesService {
   async update(
     id: number,
     updateCandidateDto: UpdateCandidateDto,
+    hrId?: number,
   ): Promise<Candidate> {
+    await this.validateHrUser(hrId);
+
     // 1. Verify candidate exists
     const existingCandidate = await this.findOne(id);
 
-    // 2. Merge allowed fields
-    const { name, email, phone, skills, resume_url, status } = updateCandidateDto;
+    // 2. Merge allowed fields (status is controlled strictly via workflow)
+    const { name, email, phone, skills, resume_url } = updateCandidateDto;
 
     if (name !== undefined) existingCandidate.name = name;
     if (email !== undefined) existingCandidate.email = email;
     if (phone !== undefined) existingCandidate.phone = phone;
     if (skills !== undefined) existingCandidate.skills = skills;
     if (resume_url !== undefined) existingCandidate.resume_url = resume_url;
-    if (status !== undefined) existingCandidate.status = status;
 
     await this.candidateRepository.save(existingCandidate);
+    CandidatesService.invalidateCache();
 
     return this.findOne(id);
   }
@@ -209,12 +341,15 @@ export class CandidatesService {
   /**
    * Delete a candidate by ID.
    */
-  async remove(id: number): Promise<{ message: string; id: number }> {
+  async remove(id: number, hrId?: number): Promise<{ message: string; id: number }> {
+    await this.validateHrUser(hrId);
+
     // 1. Verify candidate exists
     await this.findOne(id);
 
     // 2. Delete
     await this.candidateRepository.delete(id);
+    CandidatesService.invalidateCache();
 
     return {
       message: `Candidate with ID ${id} has been deleted successfully`,
@@ -255,25 +390,63 @@ export class CandidatesService {
    */
   async getScreening(id: number) {
     const candidate = await this.findOne(id);
-    const matchResult = this.candidateMatchingService.calculateMatch(
-      candidate.skills,
-      candidate.job?.required_skills,
-    );
+    const requiredSkills = this.normalizeSkills(candidate.job?.required_skills);
 
     const evaluation = await this.evaluationRepository.findOne({
       where: { candidate_id: id },
-      relations: ['hr'],
-      select: {
-        id: true,
-        score: true,
-        notes: true,
-        hr: {
-          id: true,
-          name: true,
-          email: true,
-        },
-      },
+      relations: ['hr', 'skills'],
     });
+
+    let totalScore: number | null = null;
+    const maximumScore = requiredSkills.length * 5;
+    let overallScore: number | null = null;
+    let matchPercentage: number | null = null;
+
+    if (evaluation) {
+      totalScore =
+        evaluation.skills && evaluation.skills.length > 0
+          ? evaluation.skills.reduce((sum, s) => sum + Number(s.score), 0)
+          : Math.round(Number(evaluation.score) * requiredSkills.length);
+      overallScore = Number(evaluation.score);
+      matchPercentage =
+        maximumScore > 0 ? Math.round((totalScore / maximumScore) * 100) : 0;
+    }
+
+    const evaluationPayload = evaluation
+      ? {
+          id: evaluation.id,
+          score: overallScore,
+          notes: evaluation.notes,
+          skills:
+            evaluation.skills?.map((s) => ({
+              id: s.id,
+              skill: s.skill,
+              score: Number(s.score),
+            })) || [],
+          hr: evaluation.hr
+            ? {
+                id: evaluation.hr.id,
+                name: evaluation.hr.name,
+                email: evaluation.hr.email,
+              }
+            : null,
+          created_at: evaluation.created_at,
+          updated_at: evaluation.updated_at,
+        }
+      : null;
+
+    const matchingPayload = {
+      requiredSkills,
+      totalScore,
+      maximumScore,
+      overallScore,
+      matchPercentage,
+      // Backward compatibility aliases
+      required_skills: requiredSkills,
+      matched_skills: [],
+      missing_skills: [],
+      match_percentage: matchPercentage ?? 0,
+    };
 
     return {
       candidate: {
@@ -289,22 +462,18 @@ export class CandidatesService {
         id: candidate.job?.id ?? candidate.job_id,
         title: candidate.job?.title ?? 'Unknown',
         department: candidate.job?.department ?? '',
+        description: candidate.job?.description ?? '',
+        required_skills: candidate.job?.required_skills ?? '',
       },
-      match: {
-        required_skills: matchResult.required_skills,
-        matched_skills: matchResult.matched_skills,
-        missing_skills: matchResult.missing_skills,
-        match_percentage: matchResult.match_percentage,
-      },
-      interview_evaluation: evaluation
+      evaluation: evaluationPayload,
+      matching: matchingPayload,
+      match: matchingPayload,
+      interview_evaluation: evaluationPayload,
+      interview: evaluationPayload
         ? {
-            score: evaluation.score,
-            notes: evaluation.notes,
-            hr: {
-              id: evaluation.hr?.id,
-              name: evaluation.hr?.name,
-              email: evaluation.hr?.email,
-            },
+            id: evaluationPayload.id,
+            score: evaluationPayload.score,
+            notes: evaluationPayload.notes,
           }
         : null,
     };
@@ -317,7 +486,7 @@ export class CandidatesService {
    * - HR user exists and has role HR
    * - Candidate has a valid job
    * - Candidate status is EVALUATED (cannot submit if APPLIED, SUBMITTED_TO_COMPANY, ACCEPTED, REJECTED)
-   * - Candidate has an interview evaluation
+   * - Candidate has an interview evaluation and all JD skills evaluated
    * Transitions status to SUBMITTED_TO_COMPANY.
    */
   async submitCandidate(
@@ -384,12 +553,33 @@ export class CandidatesService {
     // 6. Verify interview evaluation exists
     const evaluation = await this.evaluationRepository.findOne({
       where: { candidate_id: candidateId },
+      relations: ['skills'],
     });
 
     if (!evaluation) {
       throw new BadRequestException(
-        'Candidate must have an interview evaluation before submission.',
+        'Interview evaluation is required before submitting the candidate.',
       );
+    }
+
+    // Verify all required skills have been evaluated
+    const requiredSkills = this.normalizeSkills(candidate.job.required_skills);
+    if (
+      requiredSkills.length > 0 &&
+      evaluation.skills &&
+      evaluation.skills.length > 0
+    ) {
+      const evaluatedSkillNames = new Set(
+        evaluation.skills.map((s) => s.skill.toLowerCase()),
+      );
+      const unevaluated = requiredSkills.filter(
+        (rs) => !evaluatedSkillNames.has(rs.toLowerCase()),
+      );
+      if (unevaluated.length > 0) {
+        throw new BadRequestException(
+          'All required skills must be evaluated before submitting to company.',
+        );
+      }
     }
 
     // 7. Update candidate status and submitted_by
@@ -397,6 +587,7 @@ export class CandidatesService {
     candidate.submitted_by_id = hrUser.id;
     candidate.submitted_by = hrUser;
     await this.candidateRepository.save(candidate);
+    CandidatesService.invalidateCache();
 
     this.logger.log(
       `Candidate ID ${candidate.id} submitted to company by HR User ID ${hrUser.id}`,
@@ -412,6 +603,7 @@ export class CandidatesService {
       },
     };
   }
+
 
   /**
    * Retrieve all candidates with status SUBMITTED_TO_COMPANY sorted newest first.

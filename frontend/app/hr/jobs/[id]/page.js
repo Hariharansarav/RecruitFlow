@@ -185,24 +185,24 @@ export default function JobDetailsPage({ params }) {
       )}
 
       {/* Breadcrumb Navigation */}
-      <div className="flex items-center gap-2 text-sm text-slate-500">
+      <div className="flex items-center gap-2 text-sm text-zinc-500">
         <Link
           href="/hr/jobs"
-          className="hover:text-brand-600 transition-colors flex items-center gap-1 font-medium"
+          className="hover:text-black transition-colors flex items-center gap-1 font-medium"
         >
           <ArrowLeft className="w-4 h-4" /> Jobs
         </Link>
         <span>/</span>
-        <span className="text-slate-900 font-semibold truncate max-w-xs">
+        <span className="text-zinc-950 font-semibold truncate max-w-xs">
           {job ? job.title : 'Job Details'}
         </span>
       </div>
 
       {/* Error State */}
       {error && (
-        <div className="bg-rose-50 border border-rose-200 rounded-xl p-8 text-center max-w-md mx-auto">
-          <AlertCircle className="w-10 h-10 text-rose-600 mx-auto mb-3" />
-          <h2 className="text-lg font-bold text-slate-900 mb-1">{error}</h2>
+        <div className="bg-red-50 border border-red-200 rounded-2xl p-8 text-center max-w-md mx-auto">
+          <AlertCircle className="w-10 h-10 text-red-600 mx-auto mb-3" />
+          <h2 className="text-lg font-bold text-zinc-950 mb-1">{error}</h2>
           <div className="mt-4 flex justify-center gap-3">
             <Link href="/hr/jobs">
               <Button variant="secondary">Back to Jobs</Button>
@@ -216,17 +216,17 @@ export default function JobDetailsPage({ params }) {
 
       {/* Loading Skeleton */}
       {loading && !error && (
-        <div className="bg-white border border-slate-200 rounded-2xl p-8 shadow-sm animate-pulse space-y-6">
+        <div className="bg-white border border-zinc-200 rounded-3xl p-8 shadow-xs animate-pulse space-y-6">
           <div className="flex justify-between items-center">
-            <div className="h-8 bg-slate-200 rounded w-64" />
-            <div className="h-6 bg-slate-200 rounded w-20" />
+            <div className="h-8 bg-zinc-200 rounded w-64" />
+            <div className="h-6 bg-zinc-200 rounded w-20" />
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-4 border-t border-slate-100">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-4 border-t border-zinc-100">
             {[...Array(4)].map((_, i) => (
-              <div key={i} className="h-12 bg-slate-100 rounded" />
+              <div key={i} className="h-12 bg-zinc-100 rounded-xl" />
             ))}
           </div>
-          <div className="h-32 bg-slate-100 rounded-xl mt-6" />
+          <div className="h-32 bg-zinc-100 rounded-2xl mt-6" />
         </div>
       )}
 
@@ -234,16 +234,16 @@ export default function JobDetailsPage({ params }) {
       {!loading && !error && job && (
         <div className="space-y-6">
           {/* Top Card: Title, Status, Action Buttons */}
-          <div className="bg-white border border-slate-200 rounded-2xl p-6 sm:p-8 shadow-sm space-y-6">
+          <div className="bg-white border border-zinc-200/80 rounded-3xl p-6 sm:p-8 shadow-xs space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div className="space-y-1">
                 <div className="flex items-center gap-3">
-                  <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
+                  <h1 className="text-2xl sm:text-3xl font-extrabold text-zinc-950 tracking-tight">
                     {job.title}
                   </h1>
                   <Badge status={job.status}>{job.status}</Badge>
                 </div>
-                <p className="text-sm text-slate-500 flex items-center gap-2">
+                <p className="text-sm text-zinc-500 flex items-center gap-2">
                   <span>Requisition ID: #{job.id}</span>
                   <span>•</span>
                   <span>Posted by {job.creator?.name || 'HR Recruiter'}</span>
@@ -263,18 +263,18 @@ export default function JobDetailsPage({ params }) {
                   <Button
                     variant="outline"
                     onClick={() => setActiveModal('CLOSE')}
-                    className="flex items-center gap-2 text-slate-700 hover:text-amber-700 hover:border-amber-300"
+                    className="flex items-center gap-2 text-zinc-800 hover:text-black"
                   >
-                    <Lock className="w-4 h-4 text-amber-500" />
+                    <Lock className="w-4 h-4 text-zinc-600" />
                     <span>Close Job</span>
                   </Button>
                 ) : (
                   <Button
                     variant="outline"
                     onClick={() => setActiveModal('REOPEN')}
-                    className="flex items-center gap-2 text-slate-700 hover:text-emerald-700 hover:border-emerald-300"
+                    className="flex items-center gap-2 text-zinc-800 hover:text-black"
                   >
-                    <Unlock className="w-4 h-4 text-emerald-500" />
+                    <Unlock className="w-4 h-4 text-zinc-600" />
                     <span>Reopen Job</span>
                   </Button>
                 )}
@@ -282,7 +282,7 @@ export default function JobDetailsPage({ params }) {
                 <Button
                   variant="secondary"
                   onClick={() => setActiveModal('DELETE')}
-                  className="flex items-center gap-2 text-rose-600 hover:bg-rose-50 hover:text-rose-700"
+                  className="flex items-center gap-2 text-red-600 hover:bg-red-50 hover:text-red-700"
                 >
                   <Trash2 className="w-4 h-4" />
                   <span>Delete</span>
@@ -291,39 +291,39 @@ export default function JobDetailsPage({ params }) {
             </div>
 
             {/* Attributes Grid */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 p-5 bg-slate-50/80 rounded-xl border border-slate-100">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 p-5 bg-zinc-50 rounded-2xl border border-zinc-200/60">
               <div className="space-y-1">
-                <span className="text-xs font-medium text-slate-400 flex items-center gap-1">
+                <span className="text-xs font-medium text-zinc-400 flex items-center gap-1">
                   <Building2 className="w-3.5 h-3.5" /> Department
                 </span>
-                <p className="text-sm font-semibold text-slate-800">
+                <p className="text-sm font-semibold text-zinc-900">
                   {job.department}
                 </p>
               </div>
 
               <div className="space-y-1">
-                <span className="text-xs font-medium text-slate-400 flex items-center gap-1">
+                <span className="text-xs font-medium text-zinc-400 flex items-center gap-1">
                   <MapPin className="w-3.5 h-3.5" /> Location
                 </span>
-                <p className="text-sm font-semibold text-slate-800">
+                <p className="text-sm font-semibold text-zinc-900">
                   {job.location}
                 </p>
               </div>
 
               <div className="space-y-1">
-                <span className="text-xs font-medium text-slate-400 flex items-center gap-1">
+                <span className="text-xs font-medium text-zinc-400 flex items-center gap-1">
                   <Clock className="w-3.5 h-3.5" /> Experience
                 </span>
-                <p className="text-sm font-semibold text-slate-800">
+                <p className="text-sm font-semibold text-zinc-900">
                   {job.experience_required}
                 </p>
               </div>
 
               <div className="space-y-1">
-                <span className="text-xs font-medium text-slate-400 flex items-center gap-1">
+                <span className="text-xs font-medium text-zinc-400 flex items-center gap-1">
                   <Calendar className="w-3.5 h-3.5" /> Posted Date
                 </span>
-                <p className="text-sm font-semibold text-slate-800">
+                <p className="text-sm font-semibold text-zinc-900">
                   {formatDate(job.created_at)}
                 </p>
               </div>
@@ -331,14 +331,14 @@ export default function JobDetailsPage({ params }) {
 
             {/* Required Skills Badges */}
             <div className="space-y-3 pt-2">
-              <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider text-slate-500">
+              <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
                 Required Skills
               </h2>
               <div className="flex flex-wrap gap-2">
                 {skillsList.map((skill, index) => (
                   <span
                     key={index}
-                    className="inline-flex items-center px-3 py-1 rounded-lg text-xs font-semibold bg-brand-50 text-brand-700 border border-brand-200"
+                    className="inline-flex items-center px-3 py-1.5 rounded-xl text-xs font-semibold bg-zinc-100 text-zinc-900 border border-zinc-200 shadow-xs"
                   >
                     {skill}
                   </span>
@@ -347,11 +347,11 @@ export default function JobDetailsPage({ params }) {
             </div>
 
             {/* Full Job Description */}
-            <div className="space-y-3 pt-4 border-t border-slate-100">
-              <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider text-slate-500">
+            <div className="space-y-3 pt-4 border-t border-zinc-100">
+              <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
                 Job Description
               </h2>
-              <div className="prose max-w-none text-sm text-slate-700 leading-relaxed whitespace-pre-line bg-slate-50/40 p-5 rounded-xl border border-slate-100">
+              <div className="prose max-w-none text-sm text-zinc-800 leading-relaxed whitespace-pre-line bg-zinc-50 p-6 rounded-2xl border border-zinc-200/60">
                 {job.description}
               </div>
             </div>

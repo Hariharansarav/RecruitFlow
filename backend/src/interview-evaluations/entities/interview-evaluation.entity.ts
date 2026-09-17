@@ -5,11 +5,13 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   ManyToOne,
+  OneToMany,
   JoinColumn,
   Index,
 } from 'typeorm';
 import { Candidate } from '../../candidates/entities/candidate.entity';
 import { User } from '../../users/entities/user.entity';
+import { InterviewEvaluationSkill } from './interview-evaluation-skill.entity';
 
 @Entity({ name: 'interview_evaluations' })
 export class InterviewEvaluation {
@@ -33,8 +35,8 @@ export class InterviewEvaluation {
 
   @Column({
     type: 'decimal',
-    precision: 3,
-    scale: 1,
+    precision: 4,
+    scale: 2,
     transformer: {
       to: (value: number) => value,
       from: (value: string | number) =>
@@ -46,9 +48,15 @@ export class InterviewEvaluation {
   @Column({ type: 'text' })
   notes: string;
 
+  @OneToMany(() => InterviewEvaluationSkill, (skill) => skill.evaluation, {
+    cascade: true,
+  })
+  skills: InterviewEvaluationSkill[];
+
   @CreateDateColumn({ name: 'created_at', type: 'timestamp' })
   created_at: Date;
 
   @UpdateDateColumn({ name: 'updated_at', type: 'timestamp' })
   updated_at: Date;
 }
+

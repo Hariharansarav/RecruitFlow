@@ -8,6 +8,7 @@ export default function Modal({
   isOpen,
   title,
   message,
+  children,
   confirmText = 'Confirm',
   cancelText = 'Cancel',
   confirmVariant = 'primary',
@@ -32,19 +33,19 @@ export default function Modal({
   const isDestructive = confirmVariant === 'danger';
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-fade-in">
       <div
-        className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-md w-full p-6 animate-scale-up space-y-5"
+        className="bg-white rounded-3xl border border-zinc-200 shadow-2xl max-w-md w-full p-6 sm:p-7 space-y-6 text-zinc-900"
         role="dialog"
         aria-modal="true"
         aria-labelledby="modal-title"
       >
         <div className="flex items-start gap-4">
           <div
-            className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
+            className={`w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0 border ${
               isDestructive
-                ? 'bg-rose-100 text-rose-600'
-                : 'bg-brand-50 text-brand-600'
+                ? 'bg-red-50 text-red-600 border-red-200'
+                : 'bg-zinc-100 text-zinc-900 border-zinc-200'
             }`}
           >
             {isDestructive ? (
@@ -53,28 +54,31 @@ export default function Modal({
               <Info className="w-5 h-5" />
             )}
           </div>
-          <div className="flex-1 min-w-0">
+          <div className="flex-1 min-w-0 pt-0.5">
             <h3
               id="modal-title"
-              className="text-lg font-bold text-slate-900 tracking-tight"
+              className="text-lg font-bold text-zinc-950 tracking-tight"
             >
               {title}
             </h3>
-            <p className="text-sm text-slate-500 mt-1 leading-relaxed">
-              {message}
-            </p>
+            {message && (
+              <p className="text-sm text-zinc-500 mt-1 leading-relaxed">
+                {message}
+              </p>
+            )}
+            {children}
           </div>
           <button
             onClick={onClose}
             disabled={isLoading}
-            className="text-slate-400 hover:text-slate-600 p-1 rounded-lg transition-colors"
+            className="text-zinc-400 hover:text-zinc-900 p-1.5 rounded-xl hover:bg-zinc-100 transition-colors"
             aria-label="Close"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
-        <div className="flex items-center justify-end gap-3 pt-2">
+        <div className="flex items-center justify-end gap-3 pt-2 border-t border-zinc-100">
           <Button
             variant="secondary"
             onClick={onClose}
@@ -87,7 +91,7 @@ export default function Modal({
             onClick={onConfirm}
             loading={isLoading}
             disabled={isLoading}
-            className={isDestructive ? 'bg-rose-600 hover:bg-rose-700 text-white' : ''}
+            className={isDestructive ? 'bg-red-600 hover:bg-red-700 text-white' : ''}
           >
             {confirmText}
           </Button>

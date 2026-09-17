@@ -7,7 +7,6 @@ import {
   Plus,
   Search,
   X,
-  RefreshCw,
   Eye,
   Edit2,
   Lock,
@@ -222,27 +221,16 @@ export default function HrJobsPage() {
       )}
 
       {/* 1. Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2 border-b border-slate-200">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-zinc-200">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-zinc-950 tracking-tight">
             Jobs
           </h1>
-          <p className="text-sm text-slate-500 mt-1">
+          <p className="text-sm text-zinc-500 mt-1">
             Manage your open positions and job descriptions.
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <Button
-            variant="outline"
-            onClick={() => fetchJobs(true)}
-            disabled={loading || refreshing}
-            className="flex items-center gap-2"
-          >
-            <RefreshCw
-              className={`w-4 h-4 ${refreshing ? 'animate-spin text-brand-600' : ''}`}
-            />
-            <span>{refreshing ? 'Refreshing...' : 'Refresh'}</span>
-          </Button>
           <Link href="/hr/jobs/create">
             <Button variant="primary" className="flex items-center gap-2">
               <Plus className="w-4 h-4" />
@@ -254,20 +242,19 @@ export default function HrJobsPage() {
 
       {/* 2. Error State */}
       {error && (
-        <div className="bg-rose-50 border border-rose-200 rounded-xl p-6 text-center max-w-xl mx-auto shadow-sm">
-          <div className="w-12 h-12 bg-rose-100 text-rose-600 rounded-full flex items-center justify-center mx-auto mb-3">
+        <div className="bg-red-50 border border-red-200 rounded-2xl p-6 text-center max-w-xl mx-auto shadow-xs">
+          <div className="w-12 h-12 bg-red-100 text-red-600 rounded-2xl flex items-center justify-center mx-auto mb-3">
             <AlertCircle className="w-6 h-6" />
           </div>
-          <h2 className="text-lg font-bold text-slate-900 mb-1">
+          <h2 className="text-lg font-bold text-zinc-950 mb-1">
             Unable to load jobs
           </h2>
-          <p className="text-sm text-slate-600 mb-4">{error}</p>
+          <p className="text-sm text-zinc-600 mb-4">{error}</p>
           <Button
             variant="primary"
             onClick={() => fetchJobs()}
             className="inline-flex items-center gap-2"
           >
-            <RefreshCw className="w-4 h-4" />
             Retry
           </Button>
         </div>
@@ -281,21 +268,21 @@ export default function HrJobsPage() {
             {[...Array(3)].map((_, i) => (
               <div
                 key={i}
-                className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm space-y-4"
+                className="bg-white border border-zinc-200 rounded-2xl p-6 shadow-xs space-y-4"
               >
-                <div className="h-4 bg-slate-200 rounded w-24" />
-                <div className="h-8 bg-slate-200 rounded w-16" />
+                <div className="h-4 bg-zinc-200 rounded w-24" />
+                <div className="h-8 bg-zinc-200 rounded w-16" />
               </div>
             ))}
           </div>
 
           {/* Search/Filter Skeleton */}
-          <div className="h-12 bg-slate-200 rounded-xl w-full" />
+          <div className="h-12 bg-zinc-200 rounded-2xl w-full" />
 
           {/* Table Skeleton */}
-          <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm space-y-4">
+          <div className="bg-white border border-zinc-200 rounded-2xl p-6 shadow-xs space-y-4">
             {[...Array(5)].map((_, j) => (
-              <div key={j} className="h-12 bg-slate-100 rounded-lg" />
+              <div key={j} className="h-12 bg-zinc-100 rounded-xl" />
             ))}
           </div>
         </div>
@@ -311,40 +298,37 @@ export default function HrJobsPage() {
               label="Total Jobs"
               value={stats.total}
               description="All requisitions created"
-              color="brand"
             />
             <StatCard
               icon={Briefcase}
               label="Open Jobs"
               value={stats.open}
               description="Actively accepting applicants"
-              color="emerald"
             />
             <StatCard
               icon={Lock}
               label="Closed Jobs"
               value={stats.closed}
               description="Archived or filled positions"
-              color="sky"
             />
           </div>
 
           {/* Search and Status Filter Controls */}
-          <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="bg-white border border-zinc-200/80 rounded-2xl p-4 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-4">
             {/* Search Input */}
             <div className="relative w-full sm:max-w-md">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <Search className="w-4 h-4 text-zinc-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="Search jobs by title, department or location..."
-                className="w-full pl-10 pr-9 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500 bg-slate-50/50"
+                className="w-full pl-10 pr-9 py-2.5 rounded-xl border border-zinc-300 text-sm focus:outline-none focus:ring-2 focus:ring-black focus:border-black bg-white"
               />
               {searchTerm && (
                 <button
                   onClick={() => setSearchTerm('')}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-950"
                   aria-label="Clear search"
                 >
                   <X className="w-4 h-4" />
@@ -353,33 +337,33 @@ export default function HrJobsPage() {
             </div>
 
             {/* Status Segmented Filter */}
-            <div className="flex items-center gap-1.5 p-1 bg-slate-100 rounded-lg w-full sm:w-auto justify-center">
+            <div className="flex items-center gap-1.5 p-1 bg-zinc-100 rounded-xl w-full sm:w-auto justify-center">
               <button
                 onClick={() => setStatusFilter('ALL')}
-                className={`px-3.5 py-1.5 rounded-md text-xs font-semibold transition-all ${
+                className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                   statusFilter === 'ALL'
-                    ? 'bg-white text-slate-900 shadow-sm'
-                    : 'text-slate-600 hover:text-slate-900'
+                    ? 'bg-black text-white shadow-xs'
+                    : 'text-zinc-600 hover:text-zinc-950'
                 }`}
               >
                 All ({stats.total})
               </button>
               <button
                 onClick={() => setStatusFilter('OPEN')}
-                className={`px-3.5 py-1.5 rounded-md text-xs font-semibold transition-all ${
+                className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                   statusFilter === 'OPEN'
-                    ? 'bg-white text-emerald-700 shadow-sm'
-                    : 'text-slate-600 hover:text-slate-900'
+                    ? 'bg-black text-white shadow-xs'
+                    : 'text-zinc-600 hover:text-zinc-950'
                 }`}
               >
                 Open ({stats.open})
               </button>
               <button
                 onClick={() => setStatusFilter('CLOSED')}
-                className={`px-3.5 py-1.5 rounded-md text-xs font-semibold transition-all ${
+                className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                   statusFilter === 'CLOSED'
-                    ? 'bg-white text-slate-700 shadow-sm'
-                    : 'text-slate-600 hover:text-slate-900'
+                    ? 'bg-black text-white shadow-xs'
+                    : 'text-zinc-600 hover:text-zinc-950'
                 }`}
               >
                 Closed ({stats.closed})
@@ -389,14 +373,14 @@ export default function HrJobsPage() {
 
           {/* Empty State: No jobs in database */}
           {jobs.length === 0 ? (
-            <div className="bg-white border border-slate-200 rounded-xl p-12 text-center shadow-sm">
-              <div className="w-16 h-16 bg-brand-50 text-brand-600 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-brand-100 shadow-sm">
+            <div className="bg-white border border-zinc-200/80 rounded-2xl p-12 text-center shadow-xs">
+              <div className="w-16 h-16 bg-zinc-100 text-zinc-900 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-zinc-200 shadow-xs">
                 <Briefcase className="w-8 h-8" />
               </div>
-              <h2 className="text-lg font-bold text-slate-900 mb-1">
+              <h2 className="text-lg font-bold text-zinc-950 mb-1">
                 No jobs have been created yet.
               </h2>
-              <p className="text-sm text-slate-500 max-w-sm mx-auto mb-6">
+              <p className="text-sm text-zinc-500 max-w-sm mx-auto mb-6">
                 Create your first job to start recruiting candidates and matching job descriptions.
               </p>
               <Link href="/hr/jobs/create">
@@ -408,14 +392,14 @@ export default function HrJobsPage() {
             </div>
           ) : filteredJobs.length === 0 ? (
             /* Empty State: Filter/search has zero results */
-            <div className="bg-white border border-slate-200 rounded-xl p-10 text-center shadow-sm">
-              <div className="w-12 h-12 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center mx-auto mb-3">
+            <div className="bg-white border border-zinc-200/80 rounded-2xl p-10 text-center shadow-xs">
+              <div className="w-12 h-12 bg-zinc-100 text-zinc-400 rounded-2xl flex items-center justify-center mx-auto mb-3">
                 <Filter className="w-6 h-6" />
               </div>
-              <h3 className="text-base font-bold text-slate-900 mb-1">
+              <h3 className="text-base font-bold text-zinc-950 mb-1">
                 No jobs match your search.
               </h3>
-              <p className="text-sm text-slate-500 mb-4">
+              <p className="text-sm text-zinc-500 mb-4">
                 Try adjusting your search keywords or switching your status filter.
               </p>
               <Button
@@ -432,43 +416,43 @@ export default function HrJobsPage() {
           ) : (
             <>
               {/* Desktop & Tablet Table */}
-              <div className="hidden md:block bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
-                <table className="w-full text-left text-sm divide-y divide-slate-200">
-                  <thead className="bg-slate-50/80 text-xs font-semibold uppercase tracking-wider text-slate-500">
+              <div className="hidden md:block w-full overflow-x-auto rounded-2xl border border-zinc-200/90 bg-white shadow-xs">
+                <table className="w-full min-w-[960px] text-left text-sm divide-y divide-zinc-200">
+                  <thead className="bg-zinc-50/90 text-xs font-semibold uppercase tracking-wider text-zinc-500 select-none">
                     <tr>
-                      <th className="px-6 py-3.5">Job Title</th>
-                      <th className="px-6 py-3.5">Department</th>
-                      <th className="px-6 py-3.5">Location</th>
-                      <th className="px-6 py-3.5">Experience</th>
-                      <th className="px-6 py-3.5">Required Skills</th>
-                      <th className="px-6 py-3.5">Status</th>
-                      <th className="px-6 py-3.5">Created</th>
-                      <th className="px-6 py-3.5 text-right">Actions</th>
+                      <th className="px-5 py-3.5 whitespace-nowrap min-w-[180px]">Job Title</th>
+                      <th className="px-5 py-3.5 whitespace-nowrap min-w-[140px]">Department</th>
+                      <th className="px-5 py-3.5 whitespace-nowrap min-w-[120px]">Location</th>
+                      <th className="px-5 py-3.5 whitespace-nowrap min-w-[110px]">Experience</th>
+                      <th className="px-5 py-3.5 whitespace-nowrap min-w-[160px]">Required Skills</th>
+                      <th className="px-5 py-3.5 whitespace-nowrap min-w-[100px]">Status</th>
+                      <th className="px-5 py-3.5 whitespace-nowrap min-w-[110px]">Created</th>
+                      <th className="px-5 py-3.5 whitespace-nowrap min-w-[150px] text-right">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100">
+                  <tbody className="divide-y divide-zinc-100">
                     {filteredJobs.map((job) => {
                       const skills = parseSkills(job.required_skills);
                       return (
                         <tr
                           key={job.id}
-                          className="hover:bg-slate-50/70 transition-colors"
+                          className="hover:bg-zinc-50/70 transition-colors"
                         >
-                          <td className="px-6 py-4 font-semibold text-slate-900">
+                          <td className="px-6 py-4 font-semibold text-zinc-950">
                             <Link
                               href={`/hr/jobs/${job.id}`}
-                              className="hover:text-brand-600 transition-colors"
+                              className="hover:text-zinc-600 transition-colors"
                             >
                               {job.title}
                             </Link>
                           </td>
-                          <td className="px-6 py-4 text-slate-600 font-medium">
+                          <td className="px-6 py-4 text-zinc-600 font-medium">
                             {job.department}
                           </td>
-                          <td className="px-6 py-4 text-slate-500">
+                          <td className="px-6 py-4 text-zinc-500">
                             {job.location}
                           </td>
-                          <td className="px-6 py-4 text-slate-500">
+                          <td className="px-6 py-4 text-zinc-500">
                             {job.experience_required}
                           </td>
                           <td className="px-6 py-4">
@@ -476,13 +460,13 @@ export default function HrJobsPage() {
                               {skills.slice(0, 3).map((skill, idx) => (
                                 <span
                                   key={idx}
-                                  className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium bg-slate-100 text-slate-700 border border-slate-200"
+                                  className="inline-flex items-center px-2.5 py-0.5 rounded-lg text-[11px] font-medium bg-zinc-100 text-zinc-800 border border-zinc-200"
                                 >
                                   {skill}
                                 </span>
                               ))}
                               {skills.length > 3 && (
-                                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-medium text-slate-400">
+                                <span className="inline-flex items-center px-1.5 py-0.5 rounded-lg text-[11px] font-medium text-zinc-400">
                                   +{skills.length - 3}
                                 </span>
                               )}
@@ -491,7 +475,7 @@ export default function HrJobsPage() {
                           <td className="px-6 py-4">
                             <Badge status={job.status}>{job.status}</Badge>
                           </td>
-                          <td className="px-6 py-4 text-slate-400 text-xs">
+                          <td className="px-6 py-4 text-zinc-400 text-xs">
                             {formatDate(job.created_at)}
                           </td>
                           <td className="px-6 py-4 text-right">

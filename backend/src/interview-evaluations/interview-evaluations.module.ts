@@ -1,7 +1,9 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { InterviewEvaluation } from './entities/interview-evaluation.entity';
+import { InterviewEvaluationSkill } from './entities/interview-evaluation-skill.entity';
 import { Candidate } from '../candidates/entities/candidate.entity';
+import { Job } from '../jobs/entities/job.entity';
 import { User } from '../users/entities/user.entity';
 import { CandidatesModule } from '../candidates/candidates.module';
 import { UsersModule } from '../users/users.module';
@@ -10,7 +12,13 @@ import { InterviewEvaluationsService } from './interview-evaluations.service';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([InterviewEvaluation, Candidate, User]),
+    TypeOrmModule.forFeature([
+      InterviewEvaluation,
+      InterviewEvaluationSkill,
+      Candidate,
+      Job,
+      User,
+    ]),
     CandidatesModule,
     UsersModule,
   ],
@@ -19,3 +27,4 @@ import { InterviewEvaluationsService } from './interview-evaluations.service';
   exports: [InterviewEvaluationsService, TypeOrmModule],
 })
 export class InterviewEvaluationsModule {}
+

@@ -13,25 +13,30 @@ export default function Button({
   ...props
 }) {
   const baseStyles =
-    'inline-flex items-center justify-center font-medium rounded-lg transition-colors focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed';
+    'inline-flex items-center justify-center font-medium whitespace-nowrap flex-nowrap transition-all duration-150 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed select-none cursor-pointer';
 
   const variants = {
     primary:
-      'bg-brand-600 text-white hover:bg-brand-700 shadow-sm focus:ring-2 focus:ring-brand-500 focus:ring-offset-1',
+      'bg-zinc-950 hover:bg-zinc-900 active:bg-black text-white font-medium tracking-tight shadow-xs hover:shadow-sm border border-zinc-800/80 focus-visible:ring-2 focus-visible:ring-zinc-950 focus-visible:ring-offset-2 active:scale-[0.98]',
     secondary:
-      'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200 focus:ring-2 focus:ring-slate-300',
+      'bg-white hover:bg-zinc-50 active:bg-zinc-100 text-zinc-900 font-medium tracking-tight border border-zinc-200/90 hover:border-zinc-300 shadow-xs focus-visible:ring-2 focus-visible:ring-zinc-400 focus-visible:ring-offset-2 active:scale-[0.98]',
     danger:
-      'bg-red-600 text-white hover:bg-red-700 shadow-sm focus:ring-2 focus:ring-red-500 focus:ring-offset-1',
+      'bg-rose-600 hover:bg-rose-700 active:bg-rose-800 text-white font-medium tracking-tight shadow-xs border border-rose-700/80 focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:ring-offset-2 active:scale-[0.98]',
+    success:
+      'bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-medium tracking-tight shadow-xs border border-emerald-700/80 focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 active:scale-[0.98]',
     outline:
-      'border border-slate-300 text-slate-700 hover:bg-slate-50 focus:ring-2 focus:ring-brand-500',
+      'bg-white hover:bg-zinc-50/90 active:bg-zinc-100 text-zinc-800 hover:text-zinc-950 font-medium tracking-tight border border-zinc-300/90 hover:border-zinc-400 shadow-xs focus-visible:ring-2 focus-visible:ring-zinc-950 active:scale-[0.98]',
     ghost:
-      'text-slate-600 hover:bg-slate-100 hover:text-slate-900',
+      'text-zinc-600 hover:text-zinc-950 hover:bg-zinc-100/80 active:bg-zinc-200/70 font-medium active:scale-[0.98]',
+    dark:
+      'bg-zinc-900 hover:bg-zinc-800 active:bg-black text-white font-medium tracking-tight border border-zinc-800 shadow-xs active:scale-[0.98]',
   };
 
   const sizes = {
-    sm: 'text-xs px-3 py-1.5 gap-1.5',
-    md: 'text-sm px-4 py-2 gap-2',
-    lg: 'text-base px-5 py-2.5 gap-2.5',
+    xs: 'text-xs px-2.5 py-1 gap-1.5 rounded-lg',
+    sm: 'text-xs px-3 py-1.5 gap-1.5 rounded-lg font-medium',
+    md: 'text-sm px-3.5 py-2 gap-2 rounded-xl font-medium',
+    lg: 'text-sm font-semibold px-5 py-2.5 gap-2 rounded-xl',
   };
 
   return (
@@ -44,9 +49,9 @@ export default function Button({
       } ${className}`}
       {...props}
     >
-      {loading && (
+      {loading ? (
         <svg
-          className="animate-spin h-4 w-4 text-current"
+          className="animate-spin h-4 w-4 text-current flex-shrink-0"
           xmlns="http://www.w3.org/2000/svg"
           fill="none"
           viewBox="0 0 24 24"
@@ -65,9 +70,10 @@ export default function Button({
             d="M4 12a8 8 0 018-8v8H4z"
           />
         </svg>
-      )}
-      {!loading && Icon && <Icon className="w-4 h-4 flex-shrink-0" />}
-      <span>{children}</span>
+      ) : Icon ? (
+        <Icon className="w-4 h-4 flex-shrink-0" />
+      ) : null}
+      {children}
     </button>
   );
 }

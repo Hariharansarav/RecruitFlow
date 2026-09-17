@@ -6,43 +6,53 @@ export default function StatCard({
   value,
   description,
   trend,
-  color = 'brand',
+  color = 'zinc',
+  onClick,
 }) {
   const iconColorStyles = {
-    brand: 'bg-brand-50 text-brand-600',
-    violet: 'bg-accent-50 text-accent-600',
-    emerald: 'bg-emerald-50 text-emerald-600',
-    amber: 'bg-amber-50 text-amber-600',
-    rose: 'bg-rose-50 text-rose-600',
-    sky: 'bg-sky-50 text-sky-600',
+    zinc: 'bg-zinc-100 text-zinc-900 border-zinc-200/80 group-hover:bg-zinc-950 group-hover:text-white',
+    emerald: 'bg-emerald-50 text-emerald-700 border-emerald-200/80 group-hover:bg-emerald-600 group-hover:text-white',
+    blue: 'bg-blue-50 text-blue-700 border-blue-200/80 group-hover:bg-blue-600 group-hover:text-white',
+    amber: 'bg-amber-50 text-amber-800 border-amber-200/80 group-hover:bg-amber-600 group-hover:text-white',
+    rose: 'bg-rose-50 text-rose-700 border-rose-200/80 group-hover:bg-rose-600 group-hover:text-white',
+    indigo: 'bg-indigo-50 text-indigo-700 border-indigo-200/80 group-hover:bg-indigo-600 group-hover:text-white',
   };
 
-  const selectedColor = iconColorStyles[color] || iconColorStyles.brand;
+  const selectedColor = iconColorStyles[color] || iconColorStyles.zinc;
 
   return (
-    <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow duration-200 flex flex-col justify-between">
-      <div className="flex items-center justify-between mb-4">
-        <span className="text-sm font-medium text-slate-500">{label}</span>
+    <div
+      onClick={onClick}
+      className={`bg-white border border-zinc-200/90 rounded-2xl p-5 sm:p-6 shadow-xs hover:border-zinc-300 hover:shadow-sm transition-all duration-200 flex flex-col justify-between group ${
+        onClick ? 'cursor-pointer' : ''
+      }`}
+    >
+      <div className="flex items-center justify-between mb-3">
+        <span className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
+          {label}
+        </span>
         {Icon && (
-          <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${selectedColor}`}>
-            <Icon className="w-5 h-5" />
+          <div
+            className={`w-9 h-9 rounded-xl border flex items-center justify-center transition-colors duration-200 ${selectedColor}`}
+          >
+            <Icon className="w-4.5 h-4.5" />
           </div>
         )}
       </div>
 
       <div className="flex items-baseline justify-between">
-        <span className="text-3xl font-bold text-slate-900 tracking-tight">
+        <span className="text-3xl font-extrabold text-zinc-950 tracking-tight">
           {value}
         </span>
         {trend && (
-          <span className="text-xs font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded">
+          <span className="text-xs font-semibold text-zinc-700 bg-zinc-100 border border-zinc-200 px-2 py-0.5 rounded-full">
             {trend}
           </span>
         )}
       </div>
 
       {description && (
-        <p className="mt-2 text-xs text-slate-500 font-normal">
+        <p className="mt-1.5 text-xs text-zinc-500 font-normal">
           {description}
         </p>
       )}

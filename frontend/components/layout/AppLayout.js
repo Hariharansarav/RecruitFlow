@@ -8,7 +8,7 @@ export default function AppLayout({ children, role, user }) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   return (
-    <div className="min-h-screen bg-slate-50 flex">
+    <div className="min-h-screen bg-[#fafafa] flex text-zinc-900 selection:bg-black selection:text-white">
       {/* Sidebar (Desktop static / Mobile drawer) */}
       <Sidebar
         role={role}

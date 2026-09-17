@@ -6,6 +6,7 @@ import {
   Delete,
   Body,
   Param,
+  Query,
   ParseIntPipe,
   HttpCode,
   HttpStatus,
@@ -91,6 +92,15 @@ export class CandidatesController {
   }
 
   /**
+   * GET /candidates/with-screening - Retrieve all candidates with pre-calculated JD match
+   * Placed before :id to prevent route collision
+   */
+  @Get('with-screening')
+  async findWithScreening() {
+    return this.candidatesService.findAllWithScreening();
+  }
+
+  /**
    * GET /candidates/:id - Retrieve a single candidate by ID
    */
   @Get(':id')
@@ -105,15 +115,21 @@ export class CandidatesController {
   async update(
     @Param('id', ParseIntPipe) id: number,
     @Body() updateCandidateDto: UpdateCandidateDto,
+    @Query('hr_id') hrId?: string,
   ) {
-    return this.candidatesService.update(id, updateCandidateDto);
+    const parsedHrId = hrId !== undefined ? Number(hrId) : undefined;
+    return this.candidatesService.update(id, updateCandidateDto, parsedHrId);
   }
 
   /**
    * DELETE /candidates/:id - Delete candidate by ID
    */
   @Delete(':id')
-  async remove(@Param('id', ParseIntPipe) id: number) {
-    return this.candidatesService.remove(id);
+  async remove(
+    @Param('id', ParseIntPipe) id: number,
+    @Query('hr_id') hrId?: string,
+  ) {
+    const parsedHrId = hrId !== undefined ? Number(hrId) : undefined;
+    return this.candidatesService.remove(id, parsedHrId);
   }
 }
