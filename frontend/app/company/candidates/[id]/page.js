@@ -22,6 +22,7 @@ import {
   Award,
   MessageSquare,
   Send,
+  ShieldCheck,
 } from 'lucide-react';
 import Button from '@/components/ui/Button';
 import Badge from '@/components/ui/Badge';
@@ -677,10 +678,10 @@ export default function CompanyCandidateDetailsPage({ params }) {
               </div>
               <div>
                 <h3 className="text-lg font-bold text-zinc-950">
-                  Skill-by-Skill Evaluation
+                  Skill-by-Skill Technical Evaluation
                 </h3>
                 <p className="text-xs text-zinc-500">
-                  Evaluated by HR screening recruiter (Score scale: 0 to 5).
+                  Evaluated by Tech Lead {evaluation?.tech_lead?.name || candidate?.tech_lead?.name || 'Interviewer'} (Score scale: 0 to 5).
                 </p>
               </div>
             </div>
@@ -691,8 +692,8 @@ export default function CompanyCandidateDetailsPage({ params }) {
                 {evaluation.skills && evaluation.skills.length > 0 ? (
                   <div className="border border-zinc-200 rounded-2xl overflow-hidden divide-y divide-zinc-100">
                     <div className="bg-zinc-50/80 px-5 py-3 flex items-center justify-between text-xs font-semibold text-zinc-500 uppercase tracking-wider">
-                      <span>Required Skill</span>
-                      <span>Evaluation Score</span>
+                      <span>Required Technical Skill</span>
+                      <span>Tech Lead Score</span>
                     </div>
                     {evaluation.skills.map((s, idx) => {
                       const scoreNum = Number(s.score);
@@ -730,15 +731,31 @@ export default function CompanyCandidateDetailsPage({ params }) {
                 <div className="space-y-2">
                   <span className="text-xs font-semibold uppercase tracking-wider text-zinc-500 block flex items-center gap-1.5">
                     <MessageSquare className="w-3.5 h-3.5 text-zinc-400" />
-                    Interview Notes
+                    Tech Lead Feedback &amp; Observations
                   </span>
                   <div className="bg-zinc-50 p-5 rounded-2xl border border-zinc-200 text-zinc-800 text-sm leading-relaxed whitespace-pre-wrap">
-                    {evaluation.notes}
+                    &ldquo;{evaluation.notes}&rdquo;
                   </div>
                 </div>
 
                 {/* Evaluator Meta */}
-                {evaluation.hr && (
+                {(evaluation.tech_lead || candidate?.tech_lead) ? (
+                  <div className="text-xs text-zinc-600 flex items-center gap-2 pt-1 flex-wrap">
+                    <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                    <span>Technical Evaluation by Tech Lead: <strong className="text-zinc-950">{evaluation.tech_lead?.name || candidate?.tech_lead?.name}</strong> ({evaluation.tech_lead?.email || candidate?.tech_lead?.email})</span>
+                    {(evaluation.updated_at || evaluation.created_at) && (
+                      <>
+                        <span>•</span>
+                        <Clock className="w-3.5 h-3.5 text-zinc-400" />
+                        <span>
+                          {formatDate(
+                            evaluation.updated_at || evaluation.created_at,
+                          )}
+                        </span>
+                      </>
+                    )}
+                  </div>
+                ) : evaluation.hr ? (
                   <div className="text-xs text-zinc-400 flex items-center gap-2 pt-1">
                     <User className="w-3.5 h-3.5 text-zinc-900" />
                     <span>Evaluated by {evaluation.hr.name}</span>
@@ -754,7 +771,7 @@ export default function CompanyCandidateDetailsPage({ params }) {
                       </>
                     )}
                   </div>
-                )}
+                ) : null}
               </div>
             ) : (
               <p className="text-sm text-zinc-400 italic py-4">

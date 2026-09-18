@@ -18,6 +18,8 @@ import { CandidateMatchingService } from './candidate-matching.service';
 import { InterviewEvaluation } from '../interview-evaluations/entities/interview-evaluation.entity';
 import { User } from '../users/entities/user.entity';
 import { UserRole } from '../users/enums/user-role.enum';
+import { TechLead } from '../tech-leads/entities/tech-lead.entity';
+import { TechLeadStatus } from '../tech-leads/enums/tech-lead-status.enum';
 
 @Injectable()
 export class CandidatesService {
@@ -32,6 +34,8 @@ export class CandidatesService {
     private readonly evaluationRepository: Repository<InterviewEvaluation>,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+    @InjectRepository(TechLead)
+    private readonly techLeadRepository: Repository<TechLead>,
     private readonly candidateMatchingService: CandidateMatchingService,
   ) {}
 
@@ -40,7 +44,7 @@ export class CandidatesService {
    * Enforces that the job exists and its status is OPEN.
    */
   async create(createCandidateDto: CreateCandidateDto): Promise<Candidate> {
-    const { name, email, phone, skills, resume_url, job_id } = createCandidateDto;
+    const { name, email, phone, resume_url, job_id, tech_lead_id } = createCandidateDto;
 
     // 1. Verify that the job exists
     const job = await this.jobRepository.findOne({
@@ -48,32 +52,49 @@ export class CandidatesService {
     });
 
     if (!job) {
-      throw new NotFoundException(`Job with ID ${job_id} not found`);
+      throw new NotFoundException('Selected job was not found.');
     }
 
     // 2. Verify that the job is OPEN
     if (job.status !== JobStatus.OPEN) {
-      throw new BadRequestException(
-        `Cannot add candidates to a closed job. Job '${job.title}' (ID: ${job.id}) has status '${job.status}'`,
-      );
+      throw new BadRequestException('Candidates can only be added to open jobs.');
     }
 
-    // 3. Create candidate with status APPLIED (skills optional, defaults to '')
+    // 3. Verify that tech_lead_id is provided and valid
+    if (!tech_lead_id) {
+      throw new BadRequestException('Please select a Tech Lead for the interview.');
+    }
+
+    const techLead = await this.techLeadRepository.findOne({
+      where: { id: tech_lead_id },
+    });
+
+    if (!techLead) {
+      throw new NotFoundException('Selected Tech Lead was not found.');
+    }
+
+    if (techLead.status !== TechLeadStatus.ACTIVE) {
+      throw new BadRequestException('Selected Tech Lead is inactive.');
+    }
+
+    // 4. Create candidate with status APPLIED (skills default to empty string)
     const candidate = this.candidateRepository.create({
-      name,
-      email,
-      phone,
-      skills: skills || '',
-      resume_url,
+      name: name.trim(),
+      email: email.trim(),
+      phone: phone.trim(),
+      skills: '',
+      resume_url: resume_url && resume_url.trim() ? resume_url.trim() : null,
       status: CandidateStatus.APPLIED,
       job_id: job.id,
       job,
+      tech_lead_id: techLead.id,
+      tech_lead: techLead,
     });
 
     const savedCandidate = await this.candidateRepository.save(candidate);
     CandidatesService.invalidateCache();
 
-    // Return candidate with basic job info
+    // Return candidate with basic job & tech lead info
     return this.findOne(savedCandidate.id);
   }
 
@@ -108,7 +129,7 @@ export class CandidatesService {
    */
   async findAll(): Promise<Candidate[]> {
     return this.candidateRepository.find({
-      relations: ['job'],
+      relations: ['job', 'tech_lead'],
       select: {
         id: true,
         name: true,
@@ -118,12 +139,19 @@ export class CandidatesService {
         resume_url: true,
         status: true,
         job_id: true,
+        tech_lead_id: true,
         created_at: true,
         updated_at: true,
         job: {
           id: true,
           title: true,
           department: true,
+        },
+        tech_lead: {
+          id: true,
+          name: true,
+          email: true,
+          status: true,
         },
       },
       order: {
@@ -169,7 +197,7 @@ export class CandidatesService {
     }
 
     const candidates = await this.candidateRepository.find({
-      relations: ['job'],
+      relations: ['job', 'tech_lead'],
       order: {
         created_at: 'DESC',
       },
@@ -194,13 +222,20 @@ export class CandidatesService {
 
       if (evaluation) {
         overallScore = Number(evaluation.score);
-        const totalScore =
-          evaluation.skills && evaluation.skills.length > 0
-            ? evaluation.skills.reduce((sum, s) => sum + Number(s.score), 0)
-            : Math.round(overallScore * requiredSkills.length);
+        if (
+          evaluation.jd_match_percentage !== null &&
+          evaluation.jd_match_percentage !== undefined
+        ) {
+          matchPercentage = Math.round(Number(evaluation.jd_match_percentage));
+        } else {
+          const totalScore =
+            evaluation.skills && evaluation.skills.length > 0
+              ? evaluation.skills.reduce((sum, s) => sum + Number(s.score), 0)
+              : Math.round(overallScore * requiredSkills.length);
 
-        matchPercentage =
-          maxScore > 0 ? Math.round((totalScore / maxScore) * 100) : 0;
+          matchPercentage =
+            maxScore > 0 ? Math.round((totalScore / maxScore) * 100) : 0;
+        }
       }
 
       return {
@@ -218,6 +253,15 @@ export class CandidatesService {
               title: c.job.title,
               department: c.job.department,
               required_skills: c.job.required_skills,
+            }
+          : null,
+        tech_lead_id: c.tech_lead_id,
+        tech_lead: c.tech_lead
+          ? {
+              id: c.tech_lead.id,
+              name: c.tech_lead.name,
+              email: c.tech_lead.email,
+              status: c.tech_lead.status,
             }
           : null,
         match_percentage: matchPercentage,
@@ -240,7 +284,7 @@ export class CandidatesService {
   async findOne(id: number): Promise<Candidate> {
     const candidate = await this.candidateRepository.findOne({
       where: { id },
-      relations: ['job'],
+      relations: ['job', 'tech_lead'],
       select: {
         id: true,
         name: true,
@@ -250,6 +294,7 @@ export class CandidatesService {
         resume_url: true,
         status: true,
         job_id: true,
+        tech_lead_id: true,
         created_at: true,
         updated_at: true,
         job: {
@@ -258,6 +303,12 @@ export class CandidatesService {
           department: true,
           description: true,
           required_skills: true,
+        },
+        tech_lead: {
+          id: true,
+          name: true,
+          email: true,
+          status: true,
         },
       },
     });
@@ -285,7 +336,7 @@ export class CandidatesService {
     // 2. Return candidates for this job
     return this.candidateRepository.find({
       where: { job_id: jobId },
-      relations: ['job'],
+      relations: ['job', 'tech_lead'],
       select: {
         id: true,
         name: true,
@@ -295,12 +346,19 @@ export class CandidatesService {
         resume_url: true,
         status: true,
         job_id: true,
+        tech_lead_id: true,
         created_at: true,
         updated_at: true,
         job: {
           id: true,
           title: true,
           department: true,
+        },
+        tech_lead: {
+          id: true,
+          name: true,
+          email: true,
+          status: true,
         },
       },
       order: {
@@ -324,13 +382,30 @@ export class CandidatesService {
     const existingCandidate = await this.findOne(id);
 
     // 2. Merge allowed fields (status is controlled strictly via workflow)
-    const { name, email, phone, skills, resume_url } = updateCandidateDto;
+    const { name, email, phone, skills, resume_url, tech_lead_id } = updateCandidateDto;
 
     if (name !== undefined) existingCandidate.name = name;
     if (email !== undefined) existingCandidate.email = email;
     if (phone !== undefined) existingCandidate.phone = phone;
     if (skills !== undefined) existingCandidate.skills = skills;
     if (resume_url !== undefined) existingCandidate.resume_url = resume_url;
+
+    if (tech_lead_id !== undefined) {
+      const techLead = await this.techLeadRepository.findOne({
+        where: { id: tech_lead_id },
+      });
+
+      if (!techLead) {
+        throw new NotFoundException('Selected Tech Lead was not found.');
+      }
+
+      if (techLead.status !== TechLeadStatus.ACTIVE) {
+        throw new BadRequestException('Selected Tech Lead is inactive.');
+      }
+
+      existingCandidate.tech_lead_id = techLead.id;
+      existingCandidate.tech_lead = techLead;
+    }
 
     await this.candidateRepository.save(existingCandidate);
     CandidatesService.invalidateCache();
@@ -394,7 +469,7 @@ export class CandidatesService {
 
     const evaluation = await this.evaluationRepository.findOne({
       where: { candidate_id: id },
-      relations: ['hr', 'skills'],
+      relations: ['hr', 'tech_lead', 'skills'],
     });
 
     let totalScore: number | null = null;
@@ -430,6 +505,13 @@ export class CandidatesService {
                 email: evaluation.hr.email,
               }
             : null,
+          tech_lead: evaluation.tech_lead
+            ? {
+                id: evaluation.tech_lead.id,
+                name: evaluation.tech_lead.name,
+                email: evaluation.tech_lead.email,
+              }
+            : null,
           created_at: evaluation.created_at,
           updated_at: evaluation.updated_at,
         }
@@ -457,6 +539,8 @@ export class CandidatesService {
         skills: candidate.skills,
         resume_url: candidate.resume_url,
         status: candidate.status,
+        tech_lead_id: candidate.tech_lead_id,
+        tech_lead: candidate.tech_lead,
       },
       job: {
         id: candidate.job?.id ?? candidate.job_id,

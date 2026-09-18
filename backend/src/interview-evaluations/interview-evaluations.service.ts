@@ -15,7 +15,11 @@ import { User } from '../users/entities/user.entity';
 import { UserRole } from '../users/enums/user-role.enum';
 import { CreateInterviewEvaluationDto } from './dto/create-interview-evaluation.dto';
 import { UpdateInterviewEvaluationDto } from './dto/update-interview-evaluation.dto';
+import { SubmitTechLeadEvaluationDto } from './dto/submit-tech-lead-evaluation.dto';
 import { CandidatesService } from '../candidates/candidates.service';
+import { TechLead } from '../tech-leads/entities/tech-lead.entity';
+import { InterviewInvitation } from '../interview-invitations/entities/interview-invitation.entity';
+import { InvitationStatus } from '../interview-invitations/enums/invitation-status.enum';
 
 @Injectable()
 export class InterviewEvaluationsService {
@@ -30,11 +34,19 @@ export class InterviewEvaluationsService {
     private readonly candidateRepository: Repository<Candidate>,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+    @InjectRepository(InterviewInvitation)
+    private readonly invitationRepository: Repository<InterviewInvitation>,
+    @InjectRepository(TechLead)
+    private readonly techLeadRepository: Repository<TechLead>,
   ) {}
 
   /**
    * Normalize required skills from Job JD:
-   * Splits by comma, trims, deduplicates case-insensitively, preserves original display casing.
+   * Splits by comma, trims whitespace, removes empty values,
+   * deduplicates case-insensitively, and preserves clean display casing.
+   *
+   * Example: "React, JavaScript, React,  Node.js, javascript, SQL"
+   * Result:  ["React", "JavaScript", "Node.js", "SQL"]
    */
   normalizeSkills(skillsStr?: string | null): string[] {
     if (!skillsStr || typeof skillsStr !== 'string') return [];
@@ -54,14 +66,98 @@ export class InterviewEvaluationsService {
   }
 
   /**
+   * Helper to format evaluation response object into structured data.
+   */
+  formatEvaluationResponse(evaluation: any) {
+    if (!evaluation) return null;
+
+    const candidate = evaluation.candidate;
+    const job = candidate?.job;
+    const requiredSkills = this.normalizeSkills(job?.required_skills);
+    const maxScore = requiredSkills.length * 5;
+    const overallScore =
+      evaluation.score !== null && evaluation.score !== undefined
+        ? Number(evaluation.score)
+        : 0;
+
+    const jdMatch =
+      evaluation.jd_match_percentage !== null &&
+      evaluation.jd_match_percentage !== undefined
+        ? Number(evaluation.jd_match_percentage)
+        : maxScore > 0
+        ? Math.round(((overallScore * requiredSkills.length) / maxScore) * 10000) / 100
+        : 0;
+
+    const skills = (evaluation.skills || []).map((s: any) => ({
+      id: s.id,
+      skill: s.skill,
+      score: Number(s.score),
+    }));
+
+    const totalScore = skills.reduce((sum: number, s: any) => sum + s.score, 0);
+
+    return {
+      id: evaluation.id,
+      candidate_id: evaluation.candidate_id,
+      candidate: candidate
+        ? {
+            id: candidate.id,
+            name: candidate.name,
+            email: candidate.email,
+            phone: candidate.phone,
+            resume_url: candidate.resume_url,
+            status: candidate.status,
+          }
+        : null,
+      job: job
+        ? {
+            id: job.id,
+            title: job.title,
+            department: job.department,
+            required_skills: requiredSkills,
+          }
+        : null,
+      skills,
+      overall_score: overallScore,
+      score: overallScore,
+      jd_match_percentage: jdMatch,
+      total_score: totalScore,
+      max_score: maxScore,
+      notes: evaluation.notes,
+      hr: evaluation.hr
+        ? {
+            id: evaluation.hr.id,
+            name: evaluation.hr.name,
+            email: evaluation.hr.email,
+          }
+        : null,
+      tech_lead_id: evaluation.tech_lead_id || candidate?.tech_lead_id || null,
+      tech_lead: evaluation.tech_lead
+        ? {
+            id: evaluation.tech_lead.id,
+            name: evaluation.tech_lead.name,
+            email: evaluation.tech_lead.email,
+          }
+        : candidate?.tech_lead
+        ? {
+            id: candidate.tech_lead.id,
+            name: candidate.tech_lead.name,
+            email: candidate.tech_lead.email,
+          }
+        : null,
+      created_at: evaluation.created_at,
+      updated_at: evaluation.updated_at,
+    };
+  }
+
+  /**
    * Create or update an interview evaluation.
-   * Enforces that Job JD is the source of skills.
-   * Recalculates total score, overall score / 5, and saves individual skill scores.
-   * Updates candidate status to EVALUATED if currently APPLIED.
+   * Enforces that Job JD is the single source of truth for technical evaluation skills.
+   * Calculates overall score (/5) and JD match percentage.
    */
   async createOrUpdate(
     createDto: CreateInterviewEvaluationDto,
-  ): Promise<InterviewEvaluation> {
+  ): Promise<any> {
     const { candidate_id, hr_id, notes, skills } = createDto;
 
     // 1. Verify candidate exists and load assigned job
@@ -73,114 +169,150 @@ export class InterviewEvaluationsService {
       throw new NotFoundException(`Candidate with ID ${candidate_id} not found`);
     }
 
-    // 2. Verify HR user exists
-    const hrUser = await this.userRepository.findOne({
-      where: { id: hr_id },
-    });
-    if (!hrUser) {
-      throw new NotFoundException(`HR user with ID ${hr_id} not found`);
+    // 2. Resolve and verify HR user
+    let hrUser: User | null = null;
+    if (hr_id) {
+      hrUser = await this.userRepository.findOne({
+        where: { id: hr_id },
+      });
+      if (!hrUser) {
+        throw new NotFoundException(`HR user with ID ${hr_id} not found`);
+      }
+      if (hrUser.role !== UserRole.HR) {
+        throw new ForbiddenException(
+          `Only HR users are permitted to evaluate candidates. User '${hrUser.name}' has role '${hrUser.role}'`,
+        );
+      }
+    } else {
+      // Find default HR user
+      hrUser = await this.userRepository.findOne({
+        where: { role: UserRole.HR },
+      });
+      if (!hrUser) {
+        throw new NotFoundException('No HR user found to assign this evaluation.');
+      }
     }
 
-    // 3. Verify user has HR role
-    if (hrUser.role !== UserRole.HR) {
-      throw new ForbiddenException(
-        `Only HR users are permitted to evaluate candidates. User '${hrUser.name}' has role '${hrUser.role}'`,
-      );
-    }
-
-    // 4. Verify candidate has an assigned job
+    // 3. Verify candidate has an assigned job
     if (!candidate.job) {
       throw new BadRequestException(
         'Candidate must be assigned to an open job before evaluation.',
       );
     }
 
-    // 5. Extract and normalize required skills from Job JD
+    // 4. Extract and normalize required skills from Job JD
     const requiredSkills = this.normalizeSkills(candidate.job.required_skills);
     if (requiredSkills.length === 0) {
       throw new BadRequestException(
-        'This job has no required skills configured. Please update the job description before evaluating this candidate.',
+        'This job has no required skills configured for evaluation.',
       );
     }
 
-    // 6. Validate skill-level scores
-    let finalScore: number;
+    // Build lookup maps for required skills
+    const requiredSkillsLowerMap = new Map<string, string>();
+    for (const rs of requiredSkills) {
+      requiredSkillsLowerMap.set(rs.toLowerCase(), rs);
+    }
 
-    if (skills && Array.isArray(skills) && skills.length > 0) {
-      const skillScoreMap = new Map<string, number>();
+    // 5. Verify submitted skills array is provided
+    if (!skills || !Array.isArray(skills) || skills.length === 0) {
+      throw new BadRequestException(
+        'Please provide scores for all required skills.',
+      );
+    }
 
-      for (const item of skills) {
-        const key = (item.skill || '').trim().toLowerCase();
-        const scoreNum = Number(item.score);
+    // 6. Validate submitted skills: check duplicates, valid scores (0-5), and unknown skills
+    const seenSubmittedSkills = new Set<string>();
+    const skillScoreMap = new Map<string, number>();
 
-        if (isNaN(scoreNum) || scoreNum < 0 || scoreNum > 5) {
-          throw new BadRequestException(
-            `Skill score for '${item.skill}' must be between 0 and 5.`,
-          );
-        }
-
-        skillScoreMap.set(key, scoreNum);
+    for (const item of skills) {
+      const trimmedSkill = (item.skill || '').trim();
+      if (!trimmedSkill) {
+        throw new BadRequestException('Skill name cannot be empty.');
       }
 
-      // Ensure every required skill from Job JD is evaluated
-      const missingSkills = requiredSkills.filter(
-        (rs) => !skillScoreMap.has(rs.toLowerCase()),
-      );
+      const lowerKey = trimmedSkill.toLowerCase();
 
-      if (missingSkills.length > 0) {
+      // Check duplicate skill in submission
+      if (seenSubmittedSkills.has(lowerKey)) {
         throw new BadRequestException(
-          'Please evaluate all required skills before saving.',
+          `Duplicate skill '${trimmedSkill}' submitted.`,
+        );
+      }
+      seenSubmittedSkills.add(lowerKey);
+
+      // Check score range: must be between 0 and 5 (0 is valid!)
+      const scoreNum = Number(item.score);
+      if (isNaN(scoreNum) || scoreNum < 0 || scoreNum > 5) {
+        throw new BadRequestException(
+          `Skill score for '${trimmedSkill}' must be between 0 and 5.`,
         );
       }
 
-      // Backend calculation
-      const totalScore = requiredSkills.reduce(
-        (sum, rs) => sum + (skillScoreMap.get(rs.toLowerCase()) ?? 0),
-        0,
-      );
-      const overallScore =
-        Math.round((totalScore / requiredSkills.length) * 100) / 100;
-      finalScore = overallScore;
-    } else if (createDto.score !== undefined && createDto.score !== null) {
-      const s = Number(createDto.score);
-      if (isNaN(s) || s < 0 || s > 5) {
-        throw new BadRequestException('Overall score must be between 0 and 5.');
+      // Check that skill is in Job JD
+      if (!requiredSkillsLowerMap.has(lowerKey)) {
+        throw new BadRequestException(
+          `Skill '${trimmedSkill}' is not a required skill for this job.`,
+        );
       }
-      finalScore = s;
-    } else {
-      throw new BadRequestException(
-        'Please evaluate all required skills before saving.',
-      );
+
+      skillScoreMap.set(lowerKey, scoreNum);
     }
 
-    // 7. Check whether an evaluation already exists for this candidate
+    // 7. Ensure every required skill from Job JD is evaluated
+    for (const rs of requiredSkills) {
+      if (!skillScoreMap.has(rs.toLowerCase())) {
+        throw new BadRequestException(
+          'Please provide scores for all required skills.',
+        );
+      }
+    }
+
+    // 8. Calculate authoritative scores
+    // total_score = sum of all skill scores
+    // maximum_score = number_of_required_skills * 5
+    // overall_score = total_score / number_of_required_skills (rounded to 2 decimal places)
+    // jd_match_percentage = (total_score / maximum_score) * 100 (rounded to 2 decimal places)
+    const totalScore = requiredSkills.reduce(
+      (sum, rs) => sum + (skillScoreMap.get(rs.toLowerCase()) ?? 0),
+      0,
+    );
+    const maximumScore = requiredSkills.length * 5;
+    const overallScore =
+      Math.round((totalScore / requiredSkills.length) * 100) / 100;
+    const jdMatchPercentage =
+      maximumScore > 0
+        ? Math.round(((totalScore / maximumScore) * 100) * 100) / 100
+        : 0;
+
+    // 9. Save or update evaluation
     let evaluation = await this.evaluationRepository.findOne({
       where: { candidate_id },
     });
 
     if (evaluation) {
-      // Update existing evaluation
       this.logger.log(
         `Updating existing evaluation (ID: ${evaluation.id}) for candidate ID ${candidate_id}`,
       );
-      evaluation.score = finalScore;
-      evaluation.notes = notes;
-      evaluation.hr_id = hr_id;
+      evaluation.score = overallScore;
+      evaluation.jd_match_percentage = jdMatchPercentage;
+      evaluation.notes = notes.trim();
+      evaluation.hr_id = hrUser.id;
       evaluation.hr = hrUser;
       await this.evaluationRepository.save(evaluation);
 
       // Clean up previous individual skill records
       await this.skillRepository.delete({ evaluation_id: evaluation.id });
     } else {
-      // Create new evaluation
       this.logger.log(
         `Creating new interview evaluation for candidate ID ${candidate_id}`,
       );
       evaluation = this.evaluationRepository.create({
         candidate_id,
-        hr_id,
-        score: finalScore,
-        notes,
+        hr_id: hrUser.id,
+        score: overallScore,
+        jd_match_percentage: jdMatchPercentage,
+        notes: notes.trim(),
         candidate,
         hr: hrUser,
       });
@@ -196,136 +328,59 @@ export class InterviewEvaluationsService {
       }
     }
 
-    // 8. Save new individual skill records if provided
-    if (skills && Array.isArray(skills) && skills.length > 0) {
-      const skillEntities = requiredSkills.map((rs) => {
-        const lowerKey = rs.toLowerCase();
-        const scoreVal =
-          skills.find(
-            (s) => (s.skill || '').trim().toLowerCase() === lowerKey,
-          )?.score ?? 0;
-
-        return this.skillRepository.create({
-          evaluation_id: evaluation.id,
-          skill: rs,
-          score: Number(scoreVal),
-        });
+    // 10. Save individual skill records using canonical required skill names
+    const skillEntities = requiredSkills.map((rs) => {
+      const scoreVal = skillScoreMap.get(rs.toLowerCase()) ?? 0;
+      return this.skillRepository.create({
+        evaluation_id: evaluation.id,
+        skill: rs,
+        score: Number(scoreVal),
       });
+    });
 
-      await this.skillRepository.save(skillEntities);
-    }
+    await this.skillRepository.save(skillEntities);
 
     CandidatesService.invalidateCache();
     return this.findOne(evaluation.id);
   }
 
   /**
-   * Retrieve all interview evaluations sorted newest first, including individual skill scores.
+   * Retrieve all interview evaluations sorted newest first.
    */
-  async findAll(): Promise<InterviewEvaluation[]> {
-    return this.evaluationRepository.find({
-      relations: ['candidate', 'hr', 'skills'],
-      select: {
-        id: true,
-        candidate_id: true,
-        hr_id: true,
-        score: true,
-        notes: true,
-        created_at: true,
-        updated_at: true,
-        candidate: {
-          id: true,
-          name: true,
-          email: true,
-        },
-        hr: {
-          id: true,
-          name: true,
-          email: true,
-        },
-        skills: {
-          id: true,
-          skill: true,
-          score: true,
-        },
-      },
+  async findAll(): Promise<any[]> {
+    const evaluations = await this.evaluationRepository.find({
+      relations: ['candidate', 'candidate.job', 'hr', 'tech_lead', 'skills'],
       order: {
         created_at: 'DESC',
       },
     });
+
+    return evaluations.map((e) => this.formatEvaluationResponse(e));
   }
 
   /**
    * Retrieve a single interview evaluation by its ID.
    */
-  async findOne(id: number): Promise<InterviewEvaluation> {
+  async findOne(id: number): Promise<any> {
     const evaluation = await this.evaluationRepository.findOne({
       where: { id },
-      relations: ['candidate', 'hr', 'skills'],
-      select: {
-        id: true,
-        candidate_id: true,
-        hr_id: true,
-        score: true,
-        notes: true,
-        created_at: true,
-        updated_at: true,
-        candidate: {
-          id: true,
-          name: true,
-          email: true,
-        },
-        hr: {
-          id: true,
-          name: true,
-          email: true,
-        },
-        skills: {
-          id: true,
-          skill: true,
-          score: true,
-        },
-      },
+      relations: ['candidate', 'candidate.job', 'hr', 'tech_lead', 'skills'],
     });
 
     if (!evaluation) {
       throw new NotFoundException(`Interview evaluation with ID ${id} not found`);
     }
 
-    return evaluation;
+    return this.formatEvaluationResponse(evaluation);
   }
 
   /**
    * Retrieve the evaluation for a specific candidate.
    */
-  async findByCandidateId(candidateId: number): Promise<InterviewEvaluation> {
+  async findByCandidateId(candidateId: number): Promise<any> {
     const evaluation = await this.evaluationRepository.findOne({
       where: { candidate_id: candidateId },
-      relations: ['candidate', 'hr', 'skills'],
-      select: {
-        id: true,
-        candidate_id: true,
-        hr_id: true,
-        score: true,
-        notes: true,
-        created_at: true,
-        updated_at: true,
-        candidate: {
-          id: true,
-          name: true,
-          email: true,
-        },
-        hr: {
-          id: true,
-          name: true,
-          email: true,
-        },
-        skills: {
-          id: true,
-          skill: true,
-          score: true,
-        },
-      },
+      relations: ['candidate', 'candidate.job', 'hr', 'tech_lead', 'skills'],
     });
 
     if (!evaluation) {
@@ -334,23 +389,118 @@ export class InterviewEvaluationsService {
       );
     }
 
-    return evaluation;
+    return this.formatEvaluationResponse(evaluation);
   }
 
   /**
-   * Update score and notes of an evaluation.
+   * Update score, skills, and notes of an existing evaluation.
    */
   async update(
     id: number,
     updateDto: UpdateInterviewEvaluationDto,
-  ): Promise<InterviewEvaluation> {
-    const evaluation = await this.findOne(id);
+  ): Promise<any> {
+    const evaluation = await this.evaluationRepository.findOne({
+      where: { id },
+      relations: ['candidate', 'candidate.job', 'skills'],
+    });
 
-    const { score, notes } = updateDto;
-    if (score !== undefined) evaluation.score = score;
-    if (notes !== undefined) evaluation.notes = notes;
+    if (!evaluation) {
+      throw new NotFoundException(`Interview evaluation with ID ${id} not found`);
+    }
+
+    const { notes, skills } = updateDto;
+
+    if (notes !== undefined) {
+      evaluation.notes = notes.trim();
+    }
+
+    if (skills && Array.isArray(skills) && skills.length > 0) {
+      const candidate = evaluation.candidate;
+      if (!candidate || !candidate.job) {
+        throw new BadRequestException('Candidate or assigned job not found.');
+      }
+
+      const requiredSkills = this.normalizeSkills(candidate.job.required_skills);
+      if (requiredSkills.length === 0) {
+        throw new BadRequestException(
+          'This job has no required skills configured for evaluation.',
+        );
+      }
+
+      const requiredSkillsLowerMap = new Map<string, string>();
+      for (const rs of requiredSkills) {
+        requiredSkillsLowerMap.set(rs.toLowerCase(), rs);
+      }
+
+      const seenSubmittedSkills = new Set<string>();
+      const skillScoreMap = new Map<string, number>();
+
+      for (const item of skills) {
+        const trimmedSkill = (item.skill || '').trim();
+        const lowerKey = trimmedSkill.toLowerCase();
+
+        if (seenSubmittedSkills.has(lowerKey)) {
+          throw new BadRequestException(
+            `Duplicate skill '${trimmedSkill}' submitted.`,
+          );
+        }
+        seenSubmittedSkills.add(lowerKey);
+
+        const scoreNum = Number(item.score);
+        if (isNaN(scoreNum) || scoreNum < 0 || scoreNum > 5) {
+          throw new BadRequestException(
+            `Skill score for '${trimmedSkill}' must be between 0 and 5.`,
+          );
+        }
+
+        if (!requiredSkillsLowerMap.has(lowerKey)) {
+          throw new BadRequestException(
+            `Skill '${trimmedSkill}' is not a required skill for this job.`,
+          );
+        }
+
+        skillScoreMap.set(lowerKey, scoreNum);
+      }
+
+      for (const rs of requiredSkills) {
+        if (!skillScoreMap.has(rs.toLowerCase())) {
+          throw new BadRequestException(
+            'Please provide scores for all required skills.',
+          );
+        }
+      }
+
+      const totalScore = requiredSkills.reduce(
+        (sum, rs) => sum + (skillScoreMap.get(rs.toLowerCase()) ?? 0),
+        0,
+      );
+      const maximumScore = requiredSkills.length * 5;
+      const overallScore =
+        Math.round((totalScore / requiredSkills.length) * 100) / 100;
+      const jdMatchPercentage =
+        maximumScore > 0
+          ? Math.round(((totalScore / maximumScore) * 100) * 100) / 100
+          : 0;
+
+      evaluation.score = overallScore;
+      evaluation.jd_match_percentage = jdMatchPercentage;
+
+      await this.skillRepository.delete({ evaluation_id: id });
+
+      const skillEntities = requiredSkills.map((rs) => {
+        const scoreVal = skillScoreMap.get(rs.toLowerCase()) ?? 0;
+        return this.skillRepository.create({
+          evaluation_id: id,
+          skill: rs,
+          score: Number(scoreVal),
+        });
+      });
+
+      await this.skillRepository.save(skillEntities);
+    }
 
     await this.evaluationRepository.save(evaluation);
+    CandidatesService.invalidateCache();
 
     return this.findOne(id);
   }
@@ -363,10 +513,256 @@ export class InterviewEvaluationsService {
 
     await this.skillRepository.delete({ evaluation_id: id });
     await this.evaluationRepository.delete(id);
+    CandidatesService.invalidateCache();
 
     return {
       message: `Interview evaluation with ID ${id} has been deleted successfully`,
       id,
+    };
+  }
+
+  /**
+   * Submit an evaluation by the Tech Lead using the secure invitation token.
+   * Validates token, candidate, job required skills, computes overall score & JD match %,
+   * saves evaluation and skills, marks invitation COMPLETED, sets candidate status EVALUATED,
+   * and invalidates screening cache.
+   */
+  async submitTechLeadEvaluation(
+    token: string,
+    dto: SubmitTechLeadEvaluationDto,
+  ): Promise<any> {
+    if (!token || typeof token !== 'string') {
+      throw new BadRequestException('Evaluation token is required.');
+    }
+
+    // 1. Find invitation by token
+    const invitation = await this.invitationRepository.findOne({
+      where: { token },
+      relations: ['candidate', 'candidate.job', 'tech_lead'],
+    });
+
+    if (!invitation) {
+      throw new NotFoundException('Interview invitation not found or link is invalid.');
+    }
+
+    // 2. Check invitation status
+    if (invitation.status === InvitationStatus.COMPLETED) {
+      throw new BadRequestException('This interview evaluation has already been submitted.');
+    }
+
+    if (invitation.status === InvitationStatus.CANCELLED) {
+      throw new BadRequestException('This interview invitation has been cancelled. Please contact HR.');
+    }
+
+    // 3. Check expiration
+    if (new Date(invitation.expires_at) <= new Date()) {
+      invitation.status = InvitationStatus.EXPIRED;
+      await this.invitationRepository.save(invitation);
+      throw new BadRequestException(
+        'This interview invitation link has expired. Please contact HR for a new link.',
+      );
+    }
+
+    const candidate = invitation.candidate;
+    if (!candidate) {
+      throw new NotFoundException('Candidate associated with this invitation was not found.');
+    }
+
+    const job = candidate.job;
+    if (!job) {
+      throw new BadRequestException('Candidate has no assigned job position.');
+    }
+
+    // 4. Validate skills against job required_skills
+    const requiredSkills = this.normalizeSkills(job.required_skills);
+    if (requiredSkills.length === 0) {
+      throw new BadRequestException('Assigned job position has no required technical skills configured.');
+    }
+
+    if (!dto.skills || !Array.isArray(dto.skills) || dto.skills.length === 0) {
+      throw new BadRequestException('Evaluation skill ratings are required.');
+    }
+
+    const requiredSkillMap = new Map<string, string>();
+    for (const rSkill of requiredSkills) {
+      requiredSkillMap.set(rSkill.toLowerCase(), rSkill);
+    }
+
+    const providedSkillMap = new Map<string, number>();
+    for (const s of dto.skills) {
+      const lower = (s.skill || '').trim().toLowerCase();
+      if (!lower) {
+        throw new BadRequestException('Skill name cannot be empty.');
+      }
+      if (!requiredSkillMap.has(lower)) {
+        throw new BadRequestException(
+          `Skill '${s.skill}' is not among the required skills for ${job.title}.`,
+        );
+      }
+      const scoreNum = Number(s.score);
+      if (isNaN(scoreNum) || scoreNum < 0 || scoreNum > 5) {
+        throw new BadRequestException(
+          `Skill score for '${s.skill}' must be a number between 0 and 5.`,
+        );
+      }
+      providedSkillMap.set(lower, scoreNum);
+    }
+
+    // Verify all required skills are scored
+    const missingSkills: string[] = [];
+    for (const [rLower, rName] of requiredSkillMap.entries()) {
+      if (!providedSkillMap.has(rLower)) {
+        missingSkills.push(rName);
+      }
+    }
+    if (missingSkills.length > 0) {
+      throw new BadRequestException(
+        `All required skills must be evaluated. Missing skills: ${missingSkills.join(', ')}`,
+      );
+    }
+
+    // 5. Calculate overall score (average of required skills) & JD match %
+    const totalScore = Array.from(providedSkillMap.values()).reduce(
+      (sum, sc) => sum + sc,
+      0,
+    );
+    const maxScore = requiredSkills.length * 5;
+    const overallScore =
+      Math.round((totalScore / requiredSkills.length) * 100) / 100;
+    const jdMatchPercentage =
+      maxScore > 0 ? Math.round((totalScore / maxScore) * 10000) / 100 : 0;
+
+    // 6. Find or create InterviewEvaluation
+    let evaluation = await this.evaluationRepository.findOne({
+      where: { candidate_id: candidate.id },
+      relations: ['skills'],
+    });
+
+    if (evaluation) {
+      // Remove previous skill scores if any
+      if (evaluation.skills && evaluation.skills.length > 0) {
+        await this.skillRepository.remove(evaluation.skills);
+      }
+      evaluation.score = overallScore;
+      evaluation.jd_match_percentage = jdMatchPercentage;
+      evaluation.notes = dto.notes.trim();
+      evaluation.tech_lead_id = invitation.tech_lead_id;
+      evaluation.tech_lead = invitation.tech_lead;
+    } else {
+      evaluation = this.evaluationRepository.create({
+        candidate_id: candidate.id,
+        candidate,
+        tech_lead_id: invitation.tech_lead_id,
+        tech_lead: invitation.tech_lead,
+        score: overallScore,
+        jd_match_percentage: jdMatchPercentage,
+        notes: dto.notes.trim(),
+      });
+    }
+
+    const savedEvaluation = await this.evaluationRepository.save(evaluation);
+
+    // 7. Save individual skill evaluations
+    const skillEntities = Array.from(providedSkillMap.entries()).map(
+      ([lower, score]) =>
+        this.skillRepository.create({
+          evaluation_id: savedEvaluation.id,
+          evaluation: savedEvaluation,
+          skill: requiredSkillMap.get(lower) || lower,
+          score,
+        }),
+    );
+    await this.skillRepository.save(skillEntities);
+
+    // 8. Update invitation to COMPLETED
+    invitation.status = InvitationStatus.COMPLETED;
+    invitation.completed_at = new Date();
+    await this.invitationRepository.save(invitation);
+
+    // 9. Update candidate status to EVALUATED
+    candidate.status = CandidateStatus.EVALUATED;
+    await this.candidateRepository.save(candidate);
+
+    // 10. Invalidate candidate screening cache
+    CandidatesService.invalidateCache();
+
+    this.logger.log(
+      `Tech Lead ${invitation.tech_lead?.name || invitation.tech_lead_id} submitted evaluation for candidate ${candidate.id}. Overall score: ${overallScore}/5, JD match: ${jdMatchPercentage}%`,
+    );
+
+    // 11. Return detailed formatted evaluation
+    const completeEvaluation = await this.evaluationRepository.findOne({
+      where: { id: savedEvaluation.id },
+      relations: ['skills', 'candidate', 'candidate.job', 'tech_lead'],
+    });
+
+    return this.formatEvaluationResponse(completeEvaluation);
+  }
+
+  /**
+   * Retrieve evaluation data or candidate evaluation requirements using secure token.
+   */
+  async getEvaluationByToken(token: string): Promise<any> {
+    const invitation = await this.invitationRepository.findOne({
+      where: { token },
+      relations: ['candidate', 'candidate.job', 'tech_lead'],
+    });
+
+    if (!invitation) {
+      throw new NotFoundException('Invalid or unknown evaluation token.');
+    }
+
+    if (invitation.status === InvitationStatus.CANCELLED) {
+      throw new BadRequestException('This interview evaluation link has been cancelled.');
+    }
+
+    if (new Date(invitation.expires_at) <= new Date() && invitation.status === InvitationStatus.PENDING) {
+      invitation.status = InvitationStatus.EXPIRED;
+      await this.invitationRepository.save(invitation);
+      throw new BadRequestException('This interview evaluation link has expired.');
+    }
+
+    const candidate = invitation.candidate;
+    const job = candidate?.job;
+    const requiredSkills = this.normalizeSkills(job?.required_skills);
+
+    const existingEval = await this.evaluationRepository.findOne({
+      where: { candidate_id: candidate?.id },
+      relations: ['skills', 'candidate', 'candidate.job', 'tech_lead'],
+    });
+
+    return {
+      invitation_id: invitation.id,
+      token: invitation.token,
+      status: invitation.status,
+      is_completed: invitation.status === InvitationStatus.COMPLETED,
+      candidate: candidate
+        ? {
+            id: candidate.id,
+            name: candidate.name,
+            email: candidate.email,
+            phone: candidate.phone,
+            resume_url: candidate.resume_url,
+          }
+        : null,
+      job: job
+        ? {
+            id: job.id,
+            title: job.title,
+            department: job.department,
+            required_skills: requiredSkills,
+          }
+        : null,
+      tech_lead: invitation.tech_lead
+        ? {
+            id: invitation.tech_lead.id,
+            name: invitation.tech_lead.name,
+            email: invitation.tech_lead.email,
+          }
+        : null,
+      evaluation: existingEval ? this.formatEvaluationResponse(existingEval) : null,
+      expires_at: invitation.expires_at,
+      completed_at: invitation.completed_at,
     };
   }
 }

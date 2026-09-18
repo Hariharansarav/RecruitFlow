@@ -13,11 +13,15 @@ import {
   AlertCircle,
   Filter,
   CheckCircle2,
+  Mail,
 } from 'lucide-react';
 import Button from '@/components/ui/Button';
 import Badge from '@/components/ui/Badge';
 import Modal from '@/components/ui/Modal';
 import Toast from '@/components/ui/Toast';
+import AddCandidateModal from '@/components/candidates/AddCandidateModal';
+import EditCandidateModal from '@/components/candidates/EditCandidateModal';
+import SendMailModal from '@/components/candidates/SendMailModal';
 import candidateService from '@/services/candidateService';
 import jobService from '@/services/jobService';
 import authService from '@/services/authService';
@@ -41,6 +45,15 @@ export default function HrCandidatesPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [jobFilter, setJobFilter] = useState('ALL');
+
+  // Add Candidate modal state
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+
+  // Edit Candidate modal state
+  const [candidateToEdit, setCandidateToEdit] = useState(null);
+
+  // Send Mail modal state
+  const [candidateForMail, setCandidateForMail] = useState(null);
 
   // Deletion modal state
   const [candidateToDelete, setCandidateToDelete] = useState(null);
@@ -80,6 +93,13 @@ export default function HrCandidatesPage() {
     const currentUser = authService.getCurrentUser();
     setUser(currentUser);
     fetchData();
+
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get('add') === 'true') {
+        setIsAddModalOpen(true);
+      }
+    }
   }, [fetchData]);
 
   // Derived statistics from live database records
@@ -115,7 +135,8 @@ export default function HrCandidatesPage() {
         const emailMatch = candidate.email?.toLowerCase().includes(query);
         const phoneMatch = candidate.phone?.toLowerCase().includes(query);
         const jobMatch = candidate.job?.title?.toLowerCase().includes(query);
-        return nameMatch || emailMatch || phoneMatch || jobMatch;
+        const techLeadMatch = candidate.tech_lead?.name?.toLowerCase().includes(query) || candidate.tech_lead?.email?.toLowerCase().includes(query);
+        return nameMatch || emailMatch || phoneMatch || jobMatch || techLeadMatch;
       }
 
       return true;
@@ -207,6 +228,52 @@ export default function HrCandidatesPage() {
         />
       )}
 
+      {/* Add Candidate Modal */}
+      <AddCandidateModal
+        isOpen={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
+        onSuccess={() => {
+          setToast({
+            message: 'Candidate added successfully.',
+            type: 'success',
+          });
+          fetchData(true);
+        }}
+      />
+
+      {/* Edit Candidate Modal Card */}
+      <EditCandidateModal
+        isOpen={Boolean(candidateToEdit)}
+        candidate={candidateToEdit}
+        onClose={() => setCandidateToEdit(null)}
+        onSuccess={() => {
+          setToast({
+            message: 'Candidate updated successfully.',
+            type: 'success',
+          });
+          setCandidateToEdit(null);
+          fetchData(true);
+        }}
+      />
+
+      {/* Send Mail Modal */}
+      <SendMailModal
+        isOpen={Boolean(candidateForMail)}
+        candidate={candidateForMail}
+        onClose={() => setCandidateForMail(null)}
+        onOpenEditCandidate={(cand) => {
+          setCandidateForMail(null);
+          setCandidateToEdit(cand);
+        }}
+        onSuccess={(msg) => {
+          setToast({
+            message: msg || 'Interview invitation sent successfully.',
+            type: 'success',
+          });
+          fetchData(true);
+        }}
+      />
+
       {/* 1. Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-5 border-b border-zinc-200">
         <div>
@@ -218,12 +285,15 @@ export default function HrCandidatesPage() {
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <Link href="/hr/candidates/create">
-            <Button variant="primary" size="sm" className="flex items-center gap-1.5">
-              <Plus className="w-4 h-4" />
-              <span>Add Candidate</span>
-            </Button>
-          </Link>
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={() => setIsAddModalOpen(true)}
+            className="flex items-center gap-1.5"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Add Candidate</span>
+          </Button>
         </div>
       </div>
 
@@ -436,12 +506,10 @@ export default function HrCandidatesPage() {
               <p className="text-sm text-zinc-500 max-w-sm mx-auto mb-6">
                 Add your first candidate to start screening and comparing against job requirements.
               </p>
-              <Link href="/hr/candidates/create">
-                <Button variant="primary">
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add Candidate
-                </Button>
-              </Link>
+              <Button variant="primary" onClick={() => setIsAddModalOpen(true)}>
+                <Plus className="w-4 h-4 mr-2" />
+                Add Candidate
+              </Button>
             </div>
           ) : filteredCandidates.length === 0 ? (
             /* Empty State: Filter/search has zero results */
@@ -469,19 +537,16 @@ export default function HrCandidatesPage() {
             </div>
           ) : (
             <>
-              {/* Desktop & Tablet Table with Horizontal Scroll Protection & Sticky Action Column */}
+              {/* Desktop & Tablet Table with Clean, Non-Overlapping Layout */}
               <div className="hidden md:block w-full overflow-x-auto rounded-2xl border border-zinc-200/90 bg-white shadow-xs">
-                <table className="w-full min-w-[1040px] text-left text-sm divide-y divide-zinc-200">
+                <table className="w-full min-w-[900px] text-left text-sm divide-y divide-zinc-200">
                   <thead className="bg-zinc-50/90 text-xs font-semibold uppercase tracking-wider text-zinc-500 select-none">
                     <tr>
-                      <th className="px-5 py-3.5 whitespace-nowrap min-w-[200px]">Candidate</th>
-                      <th className="px-5 py-3.5 whitespace-nowrap min-w-[190px]">Email</th>
-                      <th className="px-5 py-3.5 whitespace-nowrap min-w-[170px]">Job Requisition</th>
-                      <th className="px-4 py-3.5 whitespace-nowrap min-w-[110px] text-center">JD Match</th>
-                      <th className="px-4 py-3.5 whitespace-nowrap min-w-[110px] text-center">Interview</th>
-                      <th className="px-5 py-3.5 whitespace-nowrap min-w-[150px]">Status</th>
-                      <th className="px-4 py-3.5 whitespace-nowrap min-w-[110px]">Added</th>
-                      <th className="px-5 py-3.5 whitespace-nowrap min-w-[210px] text-right sticky right-0 bg-zinc-50/95 backdrop-blur-xs shadow-[-6px_0_10px_-4px_rgba(0,0,0,0.06)] z-10">Actions</th>
+                      <th className="px-5 py-3.5 whitespace-nowrap min-w-[220px]">Candidate</th>
+                      <th className="px-4 py-3.5 whitespace-nowrap min-w-[180px]">Job Requisition</th>
+                      <th className="px-4 py-3.5 whitespace-nowrap min-w-[160px]">Tech Lead</th>
+                      <th className="px-4 py-3.5 whitespace-nowrap min-w-[150px]">Status & Match</th>
+                      <th className="px-5 py-3.5 whitespace-nowrap min-w-[270px] text-right">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-zinc-100">
@@ -491,65 +556,73 @@ export default function HrCandidatesPage() {
                           key={candidate.id}
                           className="hover:bg-zinc-50/70 transition-colors group"
                         >
-                          <td className="px-5 py-3.5 font-semibold text-zinc-950 min-w-[200px]">
+                          <td className="px-5 py-4 min-w-[220px]">
                             <Link
                               href={`/hr/candidates/${candidate.id}`}
-                              className="hover:text-zinc-600 transition-colors block truncate max-w-[200px]"
+                              className="font-bold text-zinc-950 hover:text-indigo-600 transition-colors block truncate max-w-[220px]"
                               title={candidate.name}
                             >
                               {candidate.name}
                             </Link>
-                            <div className="text-xs text-zinc-400 font-normal">
-                              {candidate.phone || 'No phone'}
-                            </div>
-                          </td>
-                          <td className="px-5 py-3.5 text-zinc-600 text-xs min-w-[190px]">
-                            <span className="block truncate max-w-[180px]" title={candidate.email}>
+                            <div className="text-xs text-zinc-500 truncate max-w-[220px] mt-0.5" title={candidate.email}>
                               {candidate.email}
-                            </span>
+                            </div>
+                            {candidate.phone && (
+                              <div className="text-[11px] text-zinc-400 font-mono mt-0.5">
+                                {candidate.phone}
+                              </div>
+                            )}
                           </td>
-                          <td className="px-5 py-3.5 text-zinc-800 font-medium min-w-[170px]">
-                            <span className="block truncate max-w-[160px]" title={candidate.job?.title || 'General'}>
+                          <td className="px-4 py-4 min-w-[180px]">
+                            <span className="font-semibold text-zinc-800 block truncate max-w-[180px]" title={candidate.job?.title || 'General'}>
                               {candidate.job?.title || 'General'}
                             </span>
-                          </td>
-                          <td className="px-4 py-3.5 text-center min-w-[110px]">
-                            {candidate.match_percentage !== null &&
-                            candidate.match_percentage !== undefined ? (
-                              <span
-                                className={`inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs border ${getMatchScoreBadge(
-                                  candidate.match_percentage,
-                                )}`}
-                              >
-                                {candidate.match_percentage}%
-                              </span>
-                            ) : (
-                              <span className="text-zinc-400 text-xs font-medium">
-                                --
+                            {candidate.job?.department && (
+                              <span className="text-xs text-zinc-400 block mt-0.5 truncate max-w-[180px]">
+                                {candidate.job.department}
                               </span>
                             )}
                           </td>
-                          <td className="px-4 py-3.5 text-center min-w-[110px]">
-                            {candidate.interview_score !== null &&
-                            candidate.interview_score !== undefined ? (
-                              <span className="inline-flex items-center gap-1 text-xs font-semibold text-zinc-900 bg-zinc-100 px-2.5 py-0.5 rounded-full border border-zinc-200">
-                                {Number(candidate.interview_score).toFixed(1)} / 5
-                              </span>
+                          <td className="px-4 py-4 text-xs min-w-[160px]">
+                            {candidate.tech_lead ? (
+                              <div>
+                                <span className="font-semibold text-zinc-900 block truncate max-w-[160px]" title={candidate.tech_lead.name}>
+                                  {candidate.tech_lead.name}
+                                </span>
+                                <span className="text-zinc-400 block truncate max-w-[160px] mt-0.5" title={candidate.tech_lead.email}>
+                                  {candidate.tech_lead.email}
+                                </span>
+                              </div>
                             ) : (
-                              <span className="text-zinc-400 text-xs font-medium">
-                                --
-                              </span>
+                              <span className="text-zinc-400 italic">Unassigned</span>
                             )}
                           </td>
-                          <td className="px-5 py-3.5 min-w-[150px]">
-                            <Badge status={candidate.status}>
-                              {getStatusDisplay(candidate.status)}
-                            </Badge>
+                          <td className="px-4 py-4 min-w-[150px]">
+                            <div>
+                              <Badge status={candidate.status}>
+                                {getStatusDisplay(candidate.status)}
+                              </Badge>
+                            </div>
+                            <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                              {candidate.match_percentage !== null &&
+                              candidate.match_percentage !== undefined ? (
+                                <span
+                                  className={`inline-flex items-center justify-center px-2 py-0.5 rounded text-[11px] font-bold border ${getMatchScoreBadge(
+                                    candidate.match_percentage,
+                                  )}`}
+                                >
+                                  {candidate.match_percentage}% Match
+                                </span>
+                              ) : null}
+                              {candidate.interview_score !== null &&
+                              candidate.interview_score !== undefined ? (
+                                <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-zinc-800 bg-zinc-100 px-2 py-0.5 rounded border border-zinc-200">
+                                  ★ {Number(candidate.interview_score).toFixed(1)}/5
+                                </span>
+                              ) : null}
+                            </div>
                           </td>
-                          <td className="px-4 py-3.5 text-zinc-400 text-xs whitespace-nowrap min-w-[110px]">
-                            {formatDate(candidate.created_at)}
-                          </td>
-                          <td className="px-5 py-3.5 text-right whitespace-nowrap min-w-[210px] sticky right-0 bg-white group-hover:bg-zinc-50/70 backdrop-blur-xs shadow-[-6px_0_10px_-4px_rgba(0,0,0,0.06)] z-10">
+                          <td className="px-5 py-4 text-right whitespace-nowrap min-w-[270px]">
                             <div className="flex items-center justify-end gap-1.5 flex-nowrap">
                               <Link href={`/hr/candidates/${candidate.id}`}>
                                 <Button
@@ -571,16 +644,23 @@ export default function HrCandidatesPage() {
                                   Evaluate
                                 </Button>
                               </Link>
-                              <Link
-                                href={`/hr/candidates/${candidate.id}/edit`}
+                              <Button
+                                variant="outline"
+                                size="xs"
+                                onClick={() => setCandidateForMail(candidate)}
+                                className="text-xs font-medium px-2 py-1 border-slate-200 hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-200 transition-colors flex items-center gap-1"
+                                title="Send interview invitation email to Tech Lead"
                               >
-                                <button
-                                  className="p-1 text-zinc-400 hover:text-zinc-950 hover:bg-zinc-100 rounded-md transition-colors"
-                                  title="Edit Candidate"
-                                >
-                                  <Edit2 className="w-3.5 h-3.5" />
-                                </button>
-                              </Link>
+                                <Mail className="w-3 h-3 text-indigo-500" />
+                                <span>Send Mail</span>
+                              </Button>
+                              <button
+                                onClick={() => setCandidateToEdit(candidate)}
+                                className="p-1 text-zinc-400 hover:text-zinc-950 hover:bg-zinc-100 rounded-md transition-colors"
+                                title="Edit Candidate"
+                              >
+                                <Edit2 className="w-3.5 h-3.5" />
+                              </button>
                               <button
                                 onClick={() => setCandidateToDelete(candidate)}
                                 className="p-1 text-zinc-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-colors"
@@ -638,28 +718,43 @@ export default function HrCandidatesPage() {
                         )}
                       </div>
 
-                      <div className="flex items-center justify-end gap-2 pt-2 border-t border-zinc-100">
-                        <Link href={`/hr/candidates/${candidate.id}`} className="flex-1">
+                      <div className="flex items-center justify-between text-xs text-zinc-500">
+                        <span>Tech Lead:</span>
+                        <span className="font-medium text-zinc-900">
+                          {candidate.tech_lead ? candidate.tech_lead.name : 'Unassigned'}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center justify-end gap-2 pt-2 border-t border-zinc-100 flex-wrap">
+                        <Link href={`/hr/candidates/${candidate.id}`} className="flex-1 min-w-[65px]">
                           <Button variant="secondary" size="sm" className="w-full">
                             View
                           </Button>
                         </Link>
                         <Link
                           href={`/hr/candidates/${candidate.id}/screening`}
-                          className="flex-1"
+                          className="flex-1 min-w-[75px]"
                         >
                           <Button variant="primary" size="sm" className="w-full">
                             Evaluate
                           </Button>
                         </Link>
-                        <Link href={`/hr/candidates/${candidate.id}/edit`}>
-                          <button
-                            className="p-2 text-zinc-400 hover:text-zinc-950 hover:bg-zinc-100 rounded-lg transition-colors border border-zinc-200"
-                            title="Edit Candidate"
-                          >
-                            <Edit2 className="w-4 h-4" />
-                          </button>
-                        </Link>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setCandidateForMail(candidate)}
+                          className="flex-1 min-w-[95px] flex items-center justify-center gap-1.5 border-slate-200 hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-200"
+                        >
+                          <Mail className="w-3.5 h-3.5 text-indigo-500" />
+                          <span>Send Mail</span>
+                        </Button>
+                        <button
+                          onClick={() => setCandidateToEdit(candidate)}
+                          className="p-2 text-zinc-400 hover:text-zinc-950 hover:bg-zinc-100 rounded-lg transition-colors border border-zinc-200"
+                          title="Edit Candidate"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </button>
                         <button
                           onClick={() => setCandidateToDelete(candidate)}
                           className="p-2 text-zinc-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors border border-zinc-200"

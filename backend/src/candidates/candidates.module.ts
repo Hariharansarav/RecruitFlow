@@ -4,6 +4,7 @@ import { Candidate } from './entities/candidate.entity';
 import { Job } from '../jobs/entities/job.entity';
 import { InterviewEvaluation } from '../interview-evaluations/entities/interview-evaluation.entity';
 import { User } from '../users/entities/user.entity';
+import { TechLead } from '../tech-leads/entities/tech-lead.entity';
 import { CandidatesService } from './candidates.service';
 import { CandidateMatchingService } from './candidate-matching.service';
 import { CandidatesController } from './candidates.controller';
@@ -12,7 +13,7 @@ import { UsersModule } from '../users/users.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Candidate, Job, InterviewEvaluation, User]),
+    TypeOrmModule.forFeature([Candidate, Job, InterviewEvaluation, User, TechLead]),
     JobsModule,
     UsersModule,
   ],

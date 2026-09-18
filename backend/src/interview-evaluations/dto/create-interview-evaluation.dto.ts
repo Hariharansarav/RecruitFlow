@@ -30,24 +30,18 @@ export class CreateInterviewEvaluationDto {
   @IsPositive({ message: 'candidate_id must be a positive integer' })
   candidate_id: number;
 
-  @IsNotEmpty({ message: 'hr_id is required' })
+  @IsOptional()
   @IsInt({ message: 'hr_id must be an integer' })
   @IsPositive({ message: 'hr_id must be a positive integer' })
-  hr_id: number;
-
-  @IsOptional()
-  @IsNumber({}, { message: 'score must be a number' })
-  @Min(0, { message: 'score must be at least 0' })
-  @Max(5, { message: 'score must be at most 5' })
-  score?: number;
+  hr_id?: number;
 
   @IsNotEmpty({ message: 'notes cannot be empty' })
   @IsString({ message: 'notes must be a string' })
   notes: string;
 
-  @IsOptional()
+  @IsNotEmpty({ message: 'skills is required' })
   @IsArray({ message: 'skills must be an array' })
   @ValidateNested({ each: true })
   @Type(() => SkillEvaluationDto)
-  skills?: SkillEvaluationDto[];
+  skills: SkillEvaluationDto[];
 }

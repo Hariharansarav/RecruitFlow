@@ -12,6 +12,8 @@ import { CompanyModule } from './company/company.module';
 import { EmailModule } from './email/email.module';
 import { AuthModule } from './auth/auth.module';
 import { HrModule } from './hr/hr.module';
+import { TechLeadsModule } from './tech-leads/tech-leads.module';
+import { InterviewInvitationsModule } from './interview-invitations/interview-invitations.module';
 
 @Module({
   imports: [
@@ -70,6 +72,8 @@ import { HrModule } from './hr/hr.module';
     EmailModule,
     AuthModule,
     HrModule,
+    TechLeadsModule,
+    InterviewInvitationsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

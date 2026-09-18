@@ -7,6 +7,7 @@ import { ArrowLeft, Save, AlertCircle } from 'lucide-react';
 import Button from '@/components/ui/Button';
 import Toast from '@/components/ui/Toast';
 import candidateService from '@/services/candidateService';
+import techLeadService from '@/services/techLeadService';
 import authService from '@/services/authService';
 
 export default function EditCandidatePage({ params }) {
@@ -20,6 +21,8 @@ export default function EditCandidatePage({ params }) {
   const [serverError, setServerError] = useState(null);
   const [toast, setToast] = useState(null);
 
+  const [activeTechLeads, setActiveTechLeads] = useState([]);
+
   // Form fields
   const [formData, setFormData] = useState({
     name: '',
@@ -29,6 +32,7 @@ export default function EditCandidatePage({ params }) {
     skills: '',
     jobTitle: '',
     status: '',
+    tech_lead_id: '',
   });
 
   const [errors, setErrors] = useState({});
@@ -38,7 +42,11 @@ export default function EditCandidatePage({ params }) {
     setServerError(null);
 
     try {
-      const data = await candidateService.getCandidateById(candidateId);
+      const [data, leads] = await Promise.all([
+        candidateService.getCandidateById(candidateId),
+        techLeadService.getActiveTechLeads(),
+      ]);
+      setActiveTechLeads(leads);
       setFormData({
         name: data.name || '',
         email: data.email || '',
@@ -47,6 +55,7 @@ export default function EditCandidatePage({ params }) {
         skills: data.skills || '',
         jobTitle: data.job?.title || 'General',
         status: data.status || 'APPLIED',
+        tech_lead_id: data.tech_lead_id ? String(data.tech_lead_id) : '',
       });
     } catch (err) {
       console.error('Failed to load candidate for editing:', err);
@@ -132,8 +141,8 @@ export default function EditCandidatePage({ params }) {
         email: formData.email.trim(),
         phone: formData.phone.trim(),
         resume_url: formData.resume_url.trim() || undefined,
+        tech_lead_id: formData.tech_lead_id ? Number(formData.tech_lead_id) : undefined,
       };
-
 
       await candidateService.updateCandidate(candidateId, payload, user?.id);
 
@@ -327,32 +336,60 @@ export default function EditCandidatePage({ params }) {
             </div>
           </div>
 
-          {/* Row 3: Resume URL */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
+          {/* Row 3: Resume URL & Tech Lead */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label
+                  htmlFor="resume_url"
+                  className="block text-xs font-semibold text-zinc-700 uppercase tracking-wider"
+                >
+                  Resume URL
+                </label>
+                <span className="text-xs text-zinc-400">Optional</span>
+              </div>
+              <input
+                id="resume_url"
+                name="resume_url"
+                type="url"
+                value={formData.resume_url}
+                onChange={handleChange}
+                maxLength={500}
+                placeholder="https://example.com/resumes/candidate.pdf"
+                className="w-full px-4 py-2.5 rounded-xl border border-zinc-200 text-sm focus:outline-none focus:ring-2 focus:ring-black focus:border-black bg-zinc-50/50 hover:border-zinc-300 text-zinc-900 transition-all placeholder:text-zinc-400"
+              />
+              {errors.resume_url && (
+                <p className="text-xs font-medium text-rose-600 mt-1">
+                  {errors.resume_url}
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-2">
               <label
-                htmlFor="resume_url"
+                htmlFor="tech_lead_id"
                 className="block text-xs font-semibold text-zinc-700 uppercase tracking-wider"
               >
-                Resume URL
+                Assigned Tech Lead
               </label>
-              <span className="text-xs text-zinc-400">Optional</span>
-            </div>
-            <input
-              id="resume_url"
-              name="resume_url"
-              type="url"
-              value={formData.resume_url}
-              onChange={handleChange}
-              maxLength={500}
-              placeholder="https://example.com/resumes/candidate.pdf"
-              className="w-full px-4 py-2.5 rounded-xl border border-zinc-200 text-sm focus:outline-none focus:ring-2 focus:ring-black focus:border-black bg-zinc-50/50 hover:border-zinc-300 text-zinc-900 transition-all placeholder:text-zinc-400"
-            />
-            {errors.resume_url && (
-              <p className="text-xs font-medium text-rose-600 mt-1">
-                {errors.resume_url}
+              <select
+                id="tech_lead_id"
+                name="tech_lead_id"
+                value={formData.tech_lead_id}
+                onChange={handleChange}
+                className="w-full px-4 py-2.5 rounded-xl border border-zinc-200 text-sm focus:outline-none focus:ring-2 focus:ring-black focus:border-black bg-zinc-50/50 hover:border-zinc-300 text-zinc-900 transition-all font-medium"
+              >
+                <option value="">Select Tech Lead</option>
+                {activeTechLeads.map((tl) => (
+                  <option key={tl.id} value={tl.id}>
+                    {tl.name} — {tl.email}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-zinc-400">
+                HR can reassign candidate evaluation to any active Tech Lead.
               </p>
-            )}
+            </div>
           </div>
 
           {/* Form Actions */}

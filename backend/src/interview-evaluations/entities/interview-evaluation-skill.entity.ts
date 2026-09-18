@@ -5,6 +5,8 @@ import {
   ManyToOne,
   JoinColumn,
   Index,
+  CreateDateColumn,
+  UpdateDateColumn,
 } from 'typeorm';
 import { InterviewEvaluation } from './interview-evaluation.entity';
 
@@ -37,4 +39,10 @@ export class InterviewEvaluationSkill {
     },
   })
   score: number;
+
+  @CreateDateColumn({ name: 'created_at', type: 'timestamp' })
+  created_at: Date;
+
+  @UpdateDateColumn({ name: 'updated_at', type: 'timestamp' })
+  updated_at: Date;
 }

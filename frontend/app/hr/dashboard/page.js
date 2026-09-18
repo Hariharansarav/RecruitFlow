@@ -114,7 +114,7 @@ export default function HrDashboardPage() {
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <Link href="/hr/jobs">
+          <Link href="/hr/jobs?add=true">
             <Button variant="primary" size="sm" className="flex items-center gap-1.5">
               <Plus className="w-4 h-4" />
               <span>Create Job</span>
@@ -342,7 +342,7 @@ export default function HrDashboardPage() {
                     <p className="text-xs text-zinc-400 max-w-xs mx-auto mt-1 mb-4">
                       Add candidates to start screening and comparing against job requirements.
                     </p>
-                    <Link href="/hr/candidates/create">
+                    <Link href="/hr/candidates?add=true">
                       <Button variant="outline" size="sm">
                         + Add Candidate
                       </Button>
@@ -416,9 +416,10 @@ export default function HrDashboardPage() {
                     <p className="text-xs text-zinc-400 max-w-xs mx-auto mt-1 mb-4">
                       Create job descriptions to screen candidates against required skills.
                     </p>
-                    <Link href="/hr/jobs/create">
-                      <Button variant="primary" size="sm">
-                        + Create Job
+                    <Link href="/hr/jobs?add=true">
+                      <Button variant="primary" size="sm" className="inline-flex items-center gap-1.5">
+                        <Plus className="w-4 h-4" />
+                        <span>Create Job</span>
                       </Button>
                     </Link>
                   </div>

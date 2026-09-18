@@ -23,6 +23,7 @@ import Badge from '@/components/ui/Badge';
 import StatCard from '@/components/ui/StatCard';
 import Modal from '@/components/ui/Modal';
 import Toast from '@/components/ui/Toast';
+import AddJobModal from '@/components/jobs/AddJobModal';
 import jobService from '@/services/jobService';
 import authService from '@/services/authService';
 import { formatDate } from '@/utils/dateUtils';
@@ -37,6 +38,9 @@ export default function HrJobsPage() {
   // Search & Filter state
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL'); // 'ALL' | 'OPEN' | 'CLOSED'
+
+  // Add Job Modal state
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
   // Action modals state
   const [activeModal, setActiveModal] = useState(null); // { type: 'CLOSE' | 'REOPEN' | 'DELETE', job }
@@ -70,6 +74,13 @@ export default function HrJobsPage() {
     const currentUser = authService.getCurrentUser();
     setUser(currentUser);
     fetchJobs();
+
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get('add') === 'true') {
+        setIsAddModalOpen(true);
+      }
+    }
   }, [fetchJobs]);
 
   // Derived statistics from real backend data
@@ -220,6 +231,19 @@ export default function HrJobsPage() {
         />
       )}
 
+      {/* Add Job Modal */}
+      <AddJobModal
+        isOpen={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
+        onSuccess={() => {
+          setToast({
+            message: 'Job created successfully.',
+            type: 'success',
+          });
+          fetchJobs(true);
+        }}
+      />
+
       {/* 1. Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-zinc-200">
         <div>
@@ -231,12 +255,15 @@ export default function HrJobsPage() {
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <Link href="/hr/jobs/create">
-            <Button variant="primary" className="flex items-center gap-2">
-              <Plus className="w-4 h-4" />
-              <span>+ Create Job</span>
-            </Button>
-          </Link>
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={() => setIsAddModalOpen(true)}
+            className="flex items-center gap-1.5"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Create Job</span>
+          </Button>
         </div>
       </div>
 
@@ -383,12 +410,15 @@ export default function HrJobsPage() {
               <p className="text-sm text-zinc-500 max-w-sm mx-auto mb-6">
                 Create your first job to start recruiting candidates and matching job descriptions.
               </p>
-              <Link href="/hr/jobs/create">
-                <Button variant="primary">
-                  <Plus className="w-4 h-4 mr-2" />
-                  Create Job
-                </Button>
-              </Link>
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => setIsAddModalOpen(true)}
+                className="inline-flex items-center gap-1.5"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Create Job</span>
+              </Button>
             </div>
           ) : filteredJobs.length === 0 ? (
             /* Empty State: Filter/search has zero results */

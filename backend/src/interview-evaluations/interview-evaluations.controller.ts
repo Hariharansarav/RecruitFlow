@@ -13,12 +13,33 @@ import {
 import { InterviewEvaluationsService } from './interview-evaluations.service';
 import { CreateInterviewEvaluationDto } from './dto/create-interview-evaluation.dto';
 import { UpdateInterviewEvaluationDto } from './dto/update-interview-evaluation.dto';
+import { SubmitTechLeadEvaluationDto } from './dto/submit-tech-lead-evaluation.dto';
 
 @Controller('interview-evaluations')
 export class InterviewEvaluationsController {
   constructor(
     private readonly interviewEvaluationsService: InterviewEvaluationsService,
   ) {}
+
+  /**
+   * GET /interview-evaluations/token/:token - Retrieve evaluation data or requirements by secure token
+   */
+  @Get('token/:token')
+  async getByToken(@Param('token') token: string) {
+    return this.interviewEvaluationsService.getEvaluationByToken(token);
+  }
+
+  /**
+   * POST /interview-evaluations/token/:token - Submit technical evaluation by Tech Lead via token
+   */
+  @Post('token/:token')
+  @HttpCode(HttpStatus.CREATED)
+  async submitByToken(
+    @Param('token') token: string,
+    @Body() dto: SubmitTechLeadEvaluationDto,
+  ) {
+    return this.interviewEvaluationsService.submitTechLeadEvaluation(token, dto);
+  }
 
   /**
    * POST /interview-evaluations - Create or update candidate interview evaluation

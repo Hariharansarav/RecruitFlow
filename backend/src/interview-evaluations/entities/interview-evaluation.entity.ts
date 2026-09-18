@@ -11,6 +11,7 @@ import {
 } from 'typeorm';
 import { Candidate } from '../../candidates/entities/candidate.entity';
 import { User } from '../../users/entities/user.entity';
+import { TechLead } from '../../tech-leads/entities/tech-lead.entity';
 import { InterviewEvaluationSkill } from './interview-evaluation-skill.entity';
 
 @Entity({ name: 'interview_evaluations' })
@@ -26,12 +27,19 @@ export class InterviewEvaluation {
   @JoinColumn({ name: 'candidate_id' })
   candidate: Candidate;
 
-  @Column({ name: 'hr_id', type: 'integer' })
-  hr_id: number;
+  @Column({ name: 'hr_id', type: 'integer', nullable: true })
+  hr_id: number | null;
 
-  @ManyToOne(() => User, { onDelete: 'CASCADE' })
+  @ManyToOne(() => User, { onDelete: 'SET NULL', nullable: true })
   @JoinColumn({ name: 'hr_id' })
-  hr: User;
+  hr: User | null;
+
+  @Column({ name: 'tech_lead_id', type: 'integer', nullable: true })
+  tech_lead_id: number | null;
+
+  @ManyToOne(() => TechLead, { onDelete: 'SET NULL', nullable: true })
+  @JoinColumn({ name: 'tech_lead_id' })
+  tech_lead: TechLead | null;
 
   @Column({
     type: 'decimal',
@@ -44,6 +52,20 @@ export class InterviewEvaluation {
     },
   })
   score: number;
+
+  @Column({
+    name: 'jd_match_percentage',
+    type: 'decimal',
+    precision: 5,
+    scale: 2,
+    nullable: true,
+    transformer: {
+      to: (value: number | null) => value,
+      from: (value: string | number | null) =>
+        value !== null && value !== undefined ? Number(value) : null,
+    },
+  })
+  jd_match_percentage: number | null;
 
   @Column({ type: 'text' })
   notes: string;

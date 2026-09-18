@@ -1,4 +1,11 @@
-import { IsEmail, IsEnum, IsOptional, IsString } from 'class-validator';
+import {
+  IsEmail,
+  IsEnum,
+  IsInt,
+  IsOptional,
+  IsPositive,
+  IsString,
+} from 'class-validator';
 import { CandidateStatus } from '../enums/candidate-status.enum';
 
 export class UpdateCandidateDto {
@@ -28,4 +35,9 @@ export class UpdateCandidateDto {
       'Status must be one of APPLIED, EVALUATED, SUBMITTED_TO_COMPANY, ACCEPTED, REJECTED',
   })
   status?: CandidateStatus;
+
+  @IsOptional()
+  @IsInt({ message: 'tech_lead_id must be an integer' })
+  @IsPositive({ message: 'tech_lead_id must be a positive integer' })
+  tech_lead_id?: number;
 }

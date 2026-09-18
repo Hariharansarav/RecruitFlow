@@ -10,6 +10,7 @@ import {
 import { Job } from '../../jobs/entities/job.entity';
 import { User } from '../../users/entities/user.entity';
 import { CandidateStatus } from '../enums/candidate-status.enum';
+import { TechLead } from '../../tech-leads/entities/tech-lead.entity';
 
 @Entity({ name: 'candidates' })
 export class Candidate {
@@ -51,6 +52,16 @@ export class Candidate {
   @ManyToOne(() => User, { nullable: true, onDelete: 'SET NULL' })
   @JoinColumn({ name: 'submitted_by_id' })
   submitted_by: User | null;
+
+  @Column({ name: 'tech_lead_id', type: 'integer', nullable: true })
+  tech_lead_id: number | null;
+
+  @ManyToOne(() => TechLead, (techLead) => techLead.candidates, {
+    nullable: true,
+    onDelete: 'SET NULL',
+  })
+  @JoinColumn({ name: 'tech_lead_id' })
+  tech_lead: TechLead | null;
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamp' })
   created_at: Date;

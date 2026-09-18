@@ -19,6 +19,17 @@ export default function Badge({ children, status, variant, className = '' }) {
     // Roles & general
     HR: 'bg-zinc-950 text-white border-zinc-800 shadow-xs font-medium',
     COMPANY: 'bg-indigo-50 text-indigo-700 border-indigo-200 shadow-xs font-semibold',
+
+    // Tech Lead statuses
+    ACTIVE: 'bg-emerald-50 text-emerald-700 border-emerald-200/90 shadow-xs font-semibold ring-1 ring-emerald-500/15',
+    INACTIVE: 'bg-zinc-100 text-zinc-500 border-zinc-200 shadow-xs font-medium',
+
+    // Interview Invitation statuses
+    PENDING: 'bg-amber-50 text-amber-800 border-amber-300 shadow-xs font-semibold ring-1 ring-amber-500/20',
+    COMPLETED: 'bg-emerald-50 text-emerald-700 border-emerald-200/90 shadow-xs font-bold ring-1 ring-emerald-500/15',
+    EXPIRED: 'bg-zinc-100 text-zinc-500 border-zinc-300 shadow-xs font-medium',
+    CANCELLED: 'bg-rose-50 text-rose-700 border-rose-200/90 shadow-xs font-semibold',
+    NOT_SENT: 'bg-zinc-100 text-zinc-500 border-zinc-200 shadow-xs font-normal',
   };
 
   const currentStyle =

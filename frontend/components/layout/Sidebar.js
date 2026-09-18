@@ -23,6 +23,7 @@ export default function Sidebar({ role, user, isOpen, onClose }) {
     { label: 'Dashboard', href: '/hr/dashboard', icon: LayoutDashboard },
     { label: 'Jobs', href: '/hr/jobs', icon: BriefcaseBusiness },
     { label: 'Candidates', href: '/hr/candidates', icon: Users },
+    { label: 'Tech Leads', href: '/hr/tech-leads', icon: UserCheck },
     { label: 'Evaluations', href: '/hr/evaluations', icon: ClipboardCheck },
   ];
 

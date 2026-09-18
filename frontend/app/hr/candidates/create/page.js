@@ -8,23 +8,27 @@ import Button from '@/components/ui/Button';
 import Toast from '@/components/ui/Toast';
 import candidateService from '@/services/candidateService';
 import jobService from '@/services/jobService';
+import techLeadService from '@/services/techLeadService';
 import authService from '@/services/authService';
 
 export default function CreateCandidatePage() {
   const router = useRouter();
-  const [openJobs, setOpenJobs] = useState([]);
-  const [loadingJobs, setLoadingJobs] = useState(true);
+  const [user, setUser] = useState(null);
 
-  // Form fields strictly: Name, Email, Phone, Assign Job, Resume Link
+  const [openJobs, setOpenJobs] = useState([]);
+  const [activeTechLeads, setActiveTechLeads] = useState([]);
+  const [loadingData, setLoadingData] = useState(true);
+
+  // Form fields
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     phone: '',
-    resume_url: '',
     job_id: '',
+    tech_lead_id: '',
+    resume_url: '',
   });
 
-  // Errors & Status
   const [errors, setErrors] = useState({});
   const [serverError, setServerError] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -36,28 +40,38 @@ export default function CreateCandidatePage() {
       router.replace('/login');
       return;
     }
+    setUser(currentUser);
 
-    async function loadOpenJobs() {
+    async function fetchData() {
       try {
-        const allJobs = await jobService.getJobs();
-        const available = allJobs.filter((j) => j.status === 'OPEN');
-        setOpenJobs(available);
-        if (available.length > 0) {
-          setFormData((prev) => ({ ...prev, job_id: String(available[0].id) }));
-        }
+        const [jobs, leads] = await Promise.all([
+          jobService.getJobs(),
+          techLeadService.getActiveTechLeads(),
+        ]);
+        setOpenJobs(jobs.filter((j) => j.status === 'OPEN'));
+        setActiveTechLeads(leads);
       } catch (err) {
-        console.error('Failed to load open jobs:', err);
-        setServerError('Unable to load open jobs list. Please try again.');
+        console.error('Failed to load candidate creation options:', err);
+        setServerError('Unable to load jobs and tech leads. Please try again.');
       } finally {
-        setLoadingJobs(false);
+        setLoadingData(false);
       }
     }
 
-    loadOpenJobs();
+    fetchData();
   }, [router]);
 
   const validateEmail = (email) => {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  };
+
+  const validateUrl = (urlStr) => {
+    try {
+      const parsed = new URL(urlStr);
+      return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+    } catch {
+      return false;
+    }
   };
 
   const validateField = (name, value) => {
@@ -65,27 +79,41 @@ export default function CreateCandidatePage() {
     switch (name) {
       case 'name':
         if (!trimmed) return 'Candidate name is required.';
+        if (trimmed.length < 2) return 'Candidate name is required.';
         if (trimmed.length > 100) return 'Name cannot exceed 100 characters.';
         return '';
       case 'email':
-        if (!trimmed) return 'Email address is required.';
+        if (!trimmed) return 'Candidate email is required.';
         if (!validateEmail(trimmed)) return 'Please enter a valid email address.';
         if (trimmed.length > 150) return 'Email cannot exceed 150 characters.';
         return '';
       case 'phone':
-        if (!trimmed) return 'Phone number is required.';
-        if (trimmed.replace(/\D/g, '').length < 7) {
-          return 'Please enter a valid phone number (minimum 7 digits).';
+        if (!trimmed) return 'Candidate phone number is required.';
+        const phoneDigits = trimmed.replace(/\D/g, '');
+        if (
+          phoneDigits.length < 7 ||
+          phoneDigits.length > 15 ||
+          !/^[0-9+\s\-()]+$/.test(trimmed)
+        ) {
+          return 'Please enter a valid phone number.';
         }
         if (trimmed.length > 50) return 'Phone cannot exceed 50 characters.';
         return '';
-      case 'resume_url':
-        if (trimmed && trimmed.length > 500) {
-          return 'Resume URL cannot exceed 500 characters.';
-        }
-        return '';
       case 'job_id':
-        if (!trimmed) return 'Please select an open job.';
+        if (!trimmed) return 'Please select a job.';
+        return '';
+      case 'tech_lead_id':
+        if (!trimmed) return 'Please select a Tech Lead for the interview.';
+        return '';
+      case 'resume_url':
+        if (trimmed) {
+          if (!validateUrl(trimmed)) {
+            return 'Please enter a valid URL (e.g. https://example.com/resume.pdf).';
+          }
+          if (trimmed.length > 500) {
+            return 'Resume URL cannot exceed 500 characters.';
+          }
+        }
         return '';
       default:
         return '';
@@ -127,14 +155,15 @@ export default function CreateCandidatePage() {
         name: formData.name.trim(),
         email: formData.email.trim(),
         phone: formData.phone.trim(),
-        resume_url: formData.resume_url.trim() || undefined,
         job_id: Number(formData.job_id),
+        tech_lead_id: Number(formData.tech_lead_id),
+        resume_url: formData.resume_url.trim() || undefined,
       };
 
       await candidateService.createCandidate(payload);
 
       setToast({
-        message: '✓ Candidate saved successfully.',
+        message: 'Candidate created successfully.',
         type: 'success',
       });
 
@@ -143,18 +172,20 @@ export default function CreateCandidatePage() {
       }, 1000);
     } catch (err) {
       console.error('Failed to create candidate:', err);
-      const msg = err.response?.data?.message;
-      setServerError(
-        Array.isArray(msg)
-          ? msg.join(', ')
-          : msg || 'Unable to save candidate. Please check input values.',
-      );
+      const rawMsg = err.response?.data?.message;
+      if (Array.isArray(rawMsg)) {
+        setServerError(rawMsg.join(', '));
+      } else if (typeof rawMsg === 'string') {
+        setServerError(rawMsg);
+      } else {
+        setServerError('Unable to create candidate. Please try again.');
+      }
       setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto">
+    <div className="space-y-6 max-w-3xl mx-auto">
       {/* Toast Notification */}
       {toast && (
         <Toast
@@ -173,183 +204,225 @@ export default function CreateCandidatePage() {
           <ArrowLeft className="w-3.5 h-3.5" /> Candidates
         </Link>
         <span>/</span>
-        <span className="text-zinc-900 font-semibold">Add Candidate</span>
+        <span className="text-zinc-900 font-semibold">Create Candidate</span>
       </div>
 
-      {/* Header */}
+      {/* Page Header */}
       <div className="pb-4 border-b border-zinc-200">
         <h1 className="text-2xl sm:text-3xl font-extrabold text-zinc-950 tracking-tight">
-          Add Candidate
+          Create Candidate
         </h1>
         <p className="text-sm text-zinc-500 mt-1">
-          Add a candidate to an open job requisition. Skills will be automatically loaded from the Job Description during evaluation.
+          Add a new candidate, assign them to an open job requisition, and designate a Tech Lead for technical interview screening.
         </p>
       </div>
 
       {/* Server Error Alert */}
       {serverError && (
-        <div className="p-4 rounded-2xl bg-zinc-900 text-white border border-zinc-800 text-sm flex items-center gap-3">
-          <AlertCircle className="w-5 h-5 flex-shrink-0 text-zinc-400" />
+        <div className="p-4 rounded-2xl bg-red-50 text-red-700 border border-red-200 text-sm flex items-center gap-3">
+          <AlertCircle className="w-5 h-5 flex-shrink-0 text-red-500" />
           <span>{serverError}</span>
         </div>
       )}
 
-      {/* Warning if no open jobs available */}
-      {!loadingJobs && openJobs.length === 0 && (
-        <div className="p-6 rounded-3xl bg-zinc-50 border border-zinc-200 text-zinc-900 space-y-3">
-          <div className="flex items-center gap-2 font-bold text-base">
-            <Briefcase className="w-5 h-5 text-zinc-700" />
-            <span>No open jobs available</span>
-          </div>
-          <p className="text-sm text-zinc-600">
-            You must create an open job before adding candidates. Closed jobs cannot accept new applicants.
-          </p>
+      {/* Warning if no open jobs */}
+      {!loadingData && openJobs.length === 0 && (
+        <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-sm flex items-start gap-3">
+          <Briefcase className="w-5 h-5 flex-shrink-0 text-amber-700 mt-0.5" />
           <div>
-            <Link href="/hr/jobs/create">
-              <Button variant="primary" size="sm">
-                Create Open Job
-              </Button>
-            </Link>
+            <h4 className="font-bold">No Open Jobs Available</h4>
+            <p className="text-xs text-amber-800 mt-0.5">
+              Candidates can only be assigned to open job requisitions. Please create or reopen a job first.
+            </p>
           </div>
         </div>
       )}
 
-      {/* Candidate Form */}
+      {/* Create Candidate Form */}
       <form
         onSubmit={handleSubmit}
-        className="bg-white border border-zinc-200/80 rounded-3xl shadow-xs p-6 sm:p-8 space-y-6"
+        className="bg-white border border-zinc-200/90 rounded-3xl shadow-xs p-6 sm:p-8 space-y-6"
+        noValidate
       >
-        {/* Row 1: Name & Email */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-          <div className="space-y-2">
-            <label
-              htmlFor="name"
-              className="block text-xs font-semibold text-zinc-700 uppercase tracking-wider"
-            >
-              Candidate Name <span className="text-rose-500">*</span>
-            </label>
-            <input
-              id="name"
-              name="name"
-              type="text"
-              value={formData.name}
-              onChange={handleChange}
-              placeholder="e.g. John Doe"
-              maxLength={100}
-              className={`w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 transition-all ${
-                errors.name
-                  ? 'border-rose-300 focus:border-rose-500 focus:ring-rose-200 bg-rose-50/20'
-                  : 'border-zinc-200 focus:border-black focus:ring-zinc-200 bg-zinc-50/50 hover:border-zinc-300 text-zinc-900'
-              }`}
-            />
-            {errors.name && (
-              <p className="text-xs font-medium text-rose-600 mt-1">
-                {errors.name}
-              </p>
-            )}
-          </div>
-
-          <div className="space-y-2">
-            <label
-              htmlFor="email"
-              className="block text-xs font-semibold text-zinc-700 uppercase tracking-wider"
-            >
-              Email Address <span className="text-rose-500">*</span>
-            </label>
-            <input
-              id="email"
-              name="email"
-              type="email"
-              value={formData.email}
-              onChange={handleChange}
-              placeholder="e.g. john@example.com"
-              maxLength={150}
-              className={`w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 transition-all ${
-                errors.email
-                  ? 'border-rose-300 focus:border-rose-500 focus:ring-rose-200 bg-rose-50/20'
-                  : 'border-zinc-200 focus:border-black focus:ring-zinc-200 bg-zinc-50/50 hover:border-zinc-300 text-zinc-900'
-              }`}
-            />
-            {errors.email && (
-              <p className="text-xs font-medium text-rose-600 mt-1">
-                {errors.email}
-              </p>
-            )}
-          </div>
+        {/* Candidate Name */}
+        <div className="space-y-1.5">
+          <label
+            htmlFor="candidate_name"
+            className="block text-xs font-semibold text-zinc-700 uppercase tracking-wider"
+          >
+            Candidate Name <span className="text-red-500">*</span>
+          </label>
+          <input
+            id="candidate_name"
+            name="name"
+            type="text"
+            value={formData.name}
+            onChange={handleChange}
+            placeholder="e.g. John Doe"
+            maxLength={100}
+            className={`w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 transition-all ${
+              errors.name
+                ? 'border-red-300 focus:border-red-500 focus:ring-red-100 bg-red-50/20 text-zinc-900'
+                : 'border-zinc-200 focus:border-zinc-950 focus:ring-zinc-200 bg-zinc-50/50 hover:border-zinc-300 text-zinc-900'
+            }`}
+          />
+          {errors.name && (
+            <p className="text-xs font-medium text-red-600 mt-0.5">
+              {errors.name}
+            </p>
+          )}
         </div>
 
-        {/* Row 2: Phone & Job Selection */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-          <div className="space-y-2">
-            <label
-              htmlFor="phone"
-              className="block text-xs font-semibold text-zinc-700 uppercase tracking-wider"
-            >
-              Phone Number <span className="text-rose-500">*</span>
-            </label>
-            <input
-              id="phone"
-              name="phone"
-              type="tel"
-              value={formData.phone}
-              onChange={handleChange}
-              placeholder="e.g. 9876543210"
-              maxLength={50}
-              className={`w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 transition-all ${
-                errors.phone
-                  ? 'border-rose-300 focus:border-rose-500 focus:ring-rose-200 bg-rose-50/20'
-                  : 'border-zinc-200 focus:border-black focus:ring-zinc-200 bg-zinc-50/50 hover:border-zinc-300 text-zinc-900'
-              }`}
-            />
-            {errors.phone && (
-              <p className="text-xs font-medium text-rose-600 mt-1">
-                {errors.phone}
-              </p>
-            )}
-          </div>
+        {/* Email */}
+        <div className="space-y-1.5">
+          <label
+            htmlFor="candidate_email"
+            className="block text-xs font-semibold text-zinc-700 uppercase tracking-wider"
+          >
+            Email <span className="text-red-500">*</span>
+          </label>
+          <input
+            id="candidate_email"
+            name="email"
+            type="email"
+            value={formData.email}
+            onChange={handleChange}
+            placeholder="e.g. john@gmail.com"
+            maxLength={150}
+            className={`w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 transition-all ${
+              errors.email
+                ? 'border-red-300 focus:border-red-500 focus:ring-red-100 bg-red-50/20 text-zinc-900'
+                : 'border-zinc-200 focus:border-zinc-950 focus:ring-zinc-200 bg-zinc-50/50 hover:border-zinc-300 text-zinc-900'
+            }`}
+          />
+          {errors.email && (
+            <p className="text-xs font-medium text-red-600 mt-0.5">
+              {errors.email}
+            </p>
+          )}
+        </div>
 
-          <div className="space-y-2">
-            <label
-              htmlFor="job_id"
-              className="block text-xs font-semibold text-zinc-700 uppercase tracking-wider"
-            >
-              Assign Job <span className="text-rose-500">*</span>
-            </label>
-            <select
-              id="job_id"
-              name="job_id"
-              value={formData.job_id}
-              onChange={handleChange}
-              disabled={loadingJobs || openJobs.length === 0}
-              className={`w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 transition-all ${
-                errors.job_id
-                  ? 'border-rose-300 focus:border-rose-500 focus:ring-rose-200 bg-rose-50/20'
-                  : 'border-zinc-200 focus:border-black focus:ring-zinc-200 bg-zinc-50/50 hover:border-zinc-300 text-zinc-900'
-              }`}
-            >
-              {openJobs.length === 0 ? (
-                <option value="">No open jobs available</option>
-              ) : (
-                openJobs.map((j) => (
+        {/* Phone */}
+        <div className="space-y-1.5">
+          <label
+            htmlFor="candidate_phone"
+            className="block text-xs font-semibold text-zinc-700 uppercase tracking-wider"
+          >
+            Phone <span className="text-red-500">*</span>
+          </label>
+          <input
+            id="candidate_phone"
+            name="phone"
+            type="tel"
+            value={formData.phone}
+            onChange={handleChange}
+            placeholder="e.g. 9876543210"
+            maxLength={50}
+            className={`w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 transition-all ${
+              errors.phone
+                ? 'border-red-300 focus:border-red-500 focus:ring-red-100 bg-red-50/20 text-zinc-900'
+                : 'border-zinc-200 focus:border-zinc-950 focus:ring-zinc-200 bg-zinc-50/50 hover:border-zinc-300 text-zinc-900'
+            }`}
+          />
+          {errors.phone && (
+            <p className="text-xs font-medium text-red-600 mt-0.5">
+              {errors.phone}
+            </p>
+          )}
+        </div>
+
+        {/* Assign Job */}
+        <div className="space-y-1.5">
+          <label
+            htmlFor="candidate_job_id"
+            className="block text-xs font-semibold text-zinc-700 uppercase tracking-wider"
+          >
+            Assign Job <span className="text-red-500">*</span>
+          </label>
+          <select
+            id="candidate_job_id"
+            name="job_id"
+            value={formData.job_id}
+            onChange={handleChange}
+            disabled={loadingData || openJobs.length === 0}
+            className={`w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 transition-all ${
+              errors.job_id
+                ? 'border-red-300 focus:border-red-500 focus:ring-red-100 bg-red-50/20 text-zinc-900'
+                : 'border-zinc-200 focus:border-zinc-950 focus:ring-zinc-200 bg-zinc-50/50 hover:border-zinc-300 text-zinc-900 font-medium'
+            }`}
+          >
+            {loadingData ? (
+              <option value="">Loading jobs...</option>
+            ) : openJobs.length === 0 ? (
+              <option value="">No open jobs available</option>
+            ) : (
+              <>
+                <option value="">Select Job</option>
+                {openJobs.map((j) => (
                   <option key={j.id} value={j.id}>
                     {j.title} ({j.department})
                   </option>
-                ))
-              )}
-            </select>
-            {errors.job_id && (
-              <p className="text-xs font-medium text-rose-600 mt-1">
-                {errors.job_id}
-              </p>
+                ))}
+              </>
             )}
-          </div>
+          </select>
+          {errors.job_id && (
+            <p className="text-xs font-medium text-red-600 mt-0.5">
+              {errors.job_id}
+            </p>
+          )}
         </div>
 
-        {/* Row 3: Resume URL */}
-        <div className="space-y-2">
+        {/* Tech Lead */}
+        <div className="space-y-1.5">
+          <label
+            htmlFor="candidate_tech_lead_id"
+            className="block text-xs font-semibold text-zinc-700 uppercase tracking-wider"
+          >
+            Tech Lead <span className="text-red-500">*</span>
+          </label>
+          <select
+            id="candidate_tech_lead_id"
+            name="tech_lead_id"
+            value={formData.tech_lead_id}
+            onChange={handleChange}
+            disabled={loadingData || activeTechLeads.length === 0}
+            className={`w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 transition-all ${
+              errors.tech_lead_id
+                ? 'border-red-300 focus:border-red-500 focus:ring-red-100 bg-red-50/20 text-zinc-900'
+                : 'border-zinc-200 focus:border-zinc-950 focus:ring-zinc-200 bg-zinc-50/50 hover:border-zinc-300 text-zinc-900 font-medium'
+            }`}
+          >
+            {loadingData ? (
+              <option value="">Loading Tech Leads...</option>
+            ) : activeTechLeads.length === 0 ? (
+              <option value="">No active Tech Leads available</option>
+            ) : (
+              <>
+                <option value="">Select Tech Lead</option>
+                {activeTechLeads.map((tl) => (
+                  <option key={tl.id} value={tl.id}>
+                    {tl.name} — {tl.email}
+                  </option>
+                ))}
+              </>
+            )}
+          </select>
+          {errors.tech_lead_id && (
+            <p className="text-xs font-medium text-red-600 mt-0.5">
+              {errors.tech_lead_id}
+            </p>
+          )}
+          <p className="text-xs text-zinc-400">
+            Selected Tech Lead will conduct the candidate evaluation.
+          </p>
+        </div>
+
+        {/* Resume Link */}
+        <div className="space-y-1.5">
           <div className="flex items-center justify-between">
             <label
-              htmlFor="resume_url"
+              htmlFor="candidate_resume_url"
               className="block text-xs font-semibold text-zinc-700 uppercase tracking-wider"
             >
               Resume Link
@@ -357,24 +430,28 @@ export default function CreateCandidatePage() {
             <span className="text-xs text-zinc-400">Optional</span>
           </div>
           <input
-            id="resume_url"
+            id="candidate_resume_url"
             name="resume_url"
             type="url"
             value={formData.resume_url}
             onChange={handleChange}
-            placeholder="e.g. https://example.com/resumes/candidate.pdf"
+            placeholder="e.g. https://example.com/resume.pdf"
             maxLength={500}
-            className="w-full px-4 py-2.5 rounded-xl border border-zinc-200 text-sm focus:outline-none focus:ring-2 focus:ring-black focus:border-black bg-zinc-50/50 hover:border-zinc-300 text-zinc-900 transition-all placeholder:text-zinc-400"
+            className={`w-full px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 transition-all ${
+              errors.resume_url
+                ? 'border-red-300 focus:border-red-500 focus:ring-red-100 bg-red-50/20 text-zinc-900'
+                : 'border-zinc-200 focus:border-zinc-950 focus:ring-zinc-200 bg-zinc-50/50 hover:border-zinc-300 text-zinc-900'
+            }`}
           />
           {errors.resume_url && (
-            <p className="text-xs font-medium text-rose-600 mt-1">
+            <p className="text-xs font-medium text-red-600 mt-0.5">
               {errors.resume_url}
             </p>
           )}
         </div>
 
         {/* Action Buttons */}
-        <div className="flex items-center justify-end gap-3 pt-4 border-t border-zinc-100">
+        <div className="flex items-center justify-end gap-3 pt-5 border-t border-zinc-100">
           <Link href="/hr/candidates">
             <Button
               type="button"
@@ -392,7 +469,7 @@ export default function CreateCandidatePage() {
             className="flex items-center gap-2"
           >
             <UserPlus className="w-4 h-4" />
-            <span>{isSubmitting ? 'Saving Candidate...' : 'Save Candidate'}</span>
+            <span>{isSubmitting ? 'Creating Candidate...' : 'Create Candidate'}</span>
           </Button>
         </div>
       </form>
