@@ -239,6 +239,8 @@ export class InterviewInvitationsService {
             id: invitation.candidate.id,
             name: invitation.candidate.name,
             email: invitation.candidate.email,
+            phone: invitation.candidate.phone,
+            resume_url: invitation.candidate.resume_url,
           }
         : null,
       status: invitation.status,
@@ -333,7 +335,10 @@ export class InterviewInvitationsService {
             id: invitation.candidate.id,
             name: invitation.candidate.name,
             email: invitation.candidate.email,
+            phone: invitation.candidate.phone,
+            skills: invitation.candidate.skills,
             resume_url: invitation.candidate.resume_url,
+            status: invitation.candidate.status,
             job: jobDetails,
           }
         : null,
