@@ -2,13 +2,26 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as nodemailer from 'nodemailer';
 import type { Transporter } from 'nodemailer';
+import { GmailService } from './gmail.service';
+
+export interface SendInterviewInvitationParams {
+  techLeadName: string;
+  techLeadEmail: string;
+  candidateName: string;
+  jobTitle: string;
+  evaluationLink: string;
+  expiresAt: Date | string;
+}
 
 @Injectable()
 export class EmailService {
   private readonly logger = new Logger(EmailService.name);
   private transporter: Transporter;
 
-  constructor(private readonly configService: ConfigService) {
+  constructor(
+    private readonly configService: ConfigService,
+    private readonly gmailService: GmailService,
+  ) {
     const host = this.configService.get<string>('MAIL_HOST');
     const port = Number(this.configService.get<number>('MAIL_PORT') || 587);
     const user = this.configService.get<string>('MAIL_USER');
@@ -36,7 +49,87 @@ export class EmailService {
   }
 
   /**
-   * Sends a professional rejection email to the candidate.
+   * Sends an interview invitation email to the assigned Tech Lead via the Gmail API.
+   *
+   * @param params Interview invitation details
+   * @returns Promise<{ success: boolean, messageId?: string }>
+   */
+  async sendInterviewInvitationEmail(
+    params: SendInterviewInvitationParams,
+  ): Promise<{ success: boolean; messageId?: string }> {
+    const {
+      techLeadName,
+      techLeadEmail,
+      candidateName,
+      jobTitle,
+      evaluationLink,
+      expiresAt,
+    } = params;
+
+    const formattedDate = new Date(expiresAt).toLocaleDateString('en-GB', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    });
+
+    const subject = `Technical Interview Evaluation – ${candidateName}`;
+    const body = `Hello ${techLeadName},
+
+You have been assigned to conduct the technical evaluation
+for the following candidate.
+
+Candidate:
+${candidateName}
+
+Position:
+${jobTitle}
+
+Please use the secure link below to access the technical evaluation:
+
+${evaluationLink}
+
+This evaluation link is valid until:
+
+${formattedDate}
+
+Please complete the evaluation by rating the required technical
+skills and adding your interview comments.
+
+You do not need to create an account or log in.
+
+Regards,
+Recruitment Team`;
+
+    this.logger.log(
+      `Dispatching interview invitation via Gmail API to ${techLeadEmail}`,
+    );
+    return this.gmailService.sendEmail(techLeadEmail, subject, body);
+  }
+
+  /**
+   * Sends a verification test email via the Gmail API.
+   */
+  async sendTestEmail(
+    to: string,
+  ): Promise<{ success: boolean; messageId?: string }> {
+    const subject = 'RecruitFlow Gmail Integration Test';
+    const body = `Hello,
+
+This is a test email sent from RecruitFlow using Google OAuth2 and the Gmail API.
+
+If you received this email, your Gmail integration is functioning properly!
+
+Timestamp: ${new Date().toISOString()}
+
+Regards,
+RecruitFlow Team`;
+
+    this.logger.log(`Dispatching test email via Gmail API to ${to}`);
+    return this.gmailService.sendEmail(to, subject, body);
+  }
+
+  /**
+   * Sends a professional rejection email to the candidate via Nodemailer.
    *
    * @param candidateName Candidate's full name
    * @param candidateEmail Candidate's email address

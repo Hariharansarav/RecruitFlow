@@ -6,6 +6,7 @@ import {
   IsPositive,
   IsString,
 } from 'class-validator';
+import { Transform } from 'class-transformer';
 import { JobStatus } from '../enums/job-status.enum';
 
 export class CreateJobDto {
@@ -21,6 +22,7 @@ export class CreateJobDto {
   @IsString({ message: 'Description must be a string' })
   description: string;
 
+  @Transform(({ value }) => (Array.isArray(value) ? value.join(', ') : value))
   @IsNotEmpty({ message: 'Required skills are required' })
   @IsString({ message: 'Required skills must be a string' })
   required_skills: string;

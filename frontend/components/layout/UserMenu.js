@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { LogOut, User as UserIcon, ChevronDown } from 'lucide-react';
+import Link from 'next/link';
+import { LogOut, User as UserIcon, ChevronDown, Settings } from 'lucide-react';
 import authService from '@/services/authService';
 
 export default function UserMenu({ user }) {
@@ -63,16 +64,14 @@ export default function UserMenu({ user }) {
           </div>
 
           <div className="py-1">
-            <button
-              onClick={() => {
-                setIsOpen(false);
-                alert('User Profile details will be available in future phases.');
-              }}
+            <Link
+              href="/hr/settings"
+              onClick={() => setIsOpen(false)}
               className="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-zinc-700 hover:bg-zinc-100 hover:text-zinc-950 transition-colors text-left font-medium"
             >
-              <UserIcon className="w-4 h-4 text-zinc-400" />
-              <span>Profile Settings</span>
-            </button>
+              <Settings className="w-4 h-4 text-zinc-400" />
+              <span>Email & Settings</span>
+            </Link>
           </div>
 
           <div className="border-t border-zinc-100 pt-1">

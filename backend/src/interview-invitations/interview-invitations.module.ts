@@ -7,6 +7,7 @@ import { TechLead } from '../tech-leads/entities/tech-lead.entity';
 import { InterviewEvaluation } from '../interview-evaluations/entities/interview-evaluation.entity';
 import { InterviewInvitationsService } from './interview-invitations.service';
 import { InterviewInvitationsController } from './interview-invitations.controller';
+import { EmailModule } from '../email/email.module';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { InterviewInvitationsController } from './interview-invitations.controll
       InterviewEvaluation,
     ]),
     ConfigModule,
+    EmailModule,
   ],
   controllers: [InterviewInvitationsController],
   providers: [InterviewInvitationsService],

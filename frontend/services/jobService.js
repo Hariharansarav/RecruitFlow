@@ -29,7 +29,44 @@ const jobService = {
    * @returns {Promise<Object>} Created job
    */
   async createJob(jobData) {
-    const response = await api.post('/jobs', jobData);
+    const payload = {
+      ...jobData,
+      required_skills: Array.isArray(jobData.required_skills)
+        ? jobData.required_skills.join(', ')
+        : jobData.required_skills,
+    };
+    const response = await api.post('/jobs', payload);
+    return response.data;
+  },
+
+  /**
+   * Generate a complete structured Job Description using AI based on role & experience.
+   * @param {Object} params - { job_title, experience_years, department, location }
+   * @param {number|string} hrId - Optional HR User ID for authorization
+   * @returns {Promise<Object>} { success: true, data: { ... } }
+   */
+  async generateJobWithAI(params, hrId) {
+    const queryParams = hrId ? { hr_id: hrId } : {};
+    const response = await api.post('/ai/jobs/generate', params, {
+      params: queryParams,
+    });
+    return response.data;
+  },
+
+  /**
+   * Extract and structure an existing Job Description (plain text or PDF/DOCX file upload).
+   * @param {Object|FormData} payload - { jd_text } or FormData with 'file'
+   * @param {number|string} hrId - Optional HR User ID for authorization
+   * @returns {Promise<Object>} { success: true, data: { ... } }
+   */
+  async parseJobDescription(payload, hrId) {
+    const queryParams = hrId ? { hr_id: hrId } : {};
+    const isFormData = typeof FormData !== 'undefined' && payload instanceof FormData;
+    const config = {
+      params: queryParams,
+      headers: isFormData ? { 'Content-Type': undefined } : {},
+    };
+    const response = await api.post('/ai/jobs/parse', payload, config);
     return response.data;
   },
 

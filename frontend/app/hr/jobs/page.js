@@ -17,6 +17,7 @@ import {
   Calendar,
   AlertCircle,
   Filter,
+  Sparkles,
 } from 'lucide-react';
 import Button from '@/components/ui/Button';
 import Badge from '@/components/ui/Badge';
@@ -255,14 +256,24 @@ export default function HrJobsPage() {
           </p>
         </div>
         <div className="flex items-center gap-3">
+          <Link href="/hr/jobs/create">
+            <Button
+              variant="primary"
+              size="sm"
+              className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 border-indigo-700 text-white"
+            >
+              <Sparkles className="w-4 h-4" />
+              <span>Create with AI</span>
+            </Button>
+          </Link>
           <Button
-            variant="primary"
+            variant="secondary"
             size="sm"
             onClick={() => setIsAddModalOpen(true)}
             className="flex items-center gap-1.5"
           >
             <Plus className="w-4 h-4" />
-            <span>Create Job</span>
+            <span>Manual Entry</span>
           </Button>
         </div>
       </div>

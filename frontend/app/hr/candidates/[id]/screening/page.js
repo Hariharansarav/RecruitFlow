@@ -172,7 +172,7 @@ export default function CandidateScreeningPage({ params }) {
     }
   };
 
-  // Dispatch Invitation to Tech Lead via EmailJS
+  // Dispatch Invitation to Tech Lead via backend Gmail API
   const handleSendInvitation = async () => {
     if (!candidate?.tech_lead_id) {
       setToast({
@@ -192,24 +192,17 @@ export default function CandidateScreeningPage({ params }) {
     setInvitationLoading(true);
 
     try {
-      // 1. Generate or retrieve active invitation token
-      const invData = await interviewInvitationService.createOrGetInvitation(candidate.id);
-      setInvitation(invData);
-
-      // 2. Dispatch email to Tech Lead via EmailJS
-      const emailResult = await emailService.sendTechLeadInvitationEmail({
-        techLeadName: invData.tech_lead?.name || techLead?.name,
-        techLeadEmail: invData.tech_lead?.email || techLead?.email,
-        candidateName: invData.candidate?.name || candidate?.name,
-        jobTitle: invData.job?.title || job?.title || 'Position',
-        evaluationLink: invData.evaluation_url,
-        expiresAt: invData.expires_at,
-      });
+      // Dispatches invitation via backend Google OAuth2 + Gmail API
+      const result = await interviewInvitationService.sendInvitation(candidate.id);
+      if (result?.invitation) {
+        setInvitation(result.invitation);
+      } else {
+        const updatedInv = await interviewInvitationService.getInvitationByCandidateId(candidate.id);
+        setInvitation(updatedInv);
+      }
 
       setToast({
-        message: emailResult.simulated
-          ? 'Secure invitation link generated! (Simulated email delivery mode)'
-          : 'Interview invitation sent successfully to Tech Lead!',
+        message: 'Interview invitation sent successfully to Tech Lead!',
         type: 'success',
       });
     } catch (err) {
@@ -614,7 +607,7 @@ export default function CandidateScreeningPage({ params }) {
                     <span className="text-2xs text-zinc-400">
                       {invitation?.expires_at
                         ? `Valid until ${formatDate(invitation.expires_at)}`
-                        : 'Dispatches secure token via EmailJS'}
+                        : 'Dispatches secure token via Gmail API'}
                     </span>
 
                     <Button

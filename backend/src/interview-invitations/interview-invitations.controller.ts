@@ -43,4 +43,16 @@ export class InterviewInvitationsController {
   async findByToken(@Param('token') token: string) {
     return this.interviewInvitationsService.findByToken(token);
   }
+
+  /**
+   * POST /api/interview-invitations/:candidateId/send - Dispatches interview invitation email via Gmail API
+   */
+  @Post(':candidateId/send')
+  @HttpCode(HttpStatus.OK)
+  async sendInvitation(
+    @Param('candidateId', ParseIntPipe) candidateId: number,
+  ) {
+    return this.interviewInvitationsService.sendInterviewInvitation(candidateId);
+  }
 }
+

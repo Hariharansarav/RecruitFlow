@@ -59,6 +59,7 @@ export default function CandidateDetailsPage({ params }) {
   const [invitationLoading, setInvitationLoading] = useState(false);
   const [invitationError, setInvitationError] = useState(null);
   const [copiedLink, setCopiedLink] = useState(false);
+  const [gmailStatus, setGmailStatus] = useState(null);
 
   // Modal & Toast state
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -98,11 +99,11 @@ export default function CandidateDetailsPage({ params }) {
     fetchCandidateData();
   }, [fetchCandidateData]);
 
-  // Handle Send / Resend Interview Invitation via EmailJS
+  // Handle Send / Resend Interview Invitation via backend Gmail API
   const handleSendInvitation = async () => {
     if (!candidate?.tech_lead_id) {
       setToast({
-        message: 'Please assign an active Tech Lead before sending an invitation.',
+        message: 'Tech Lead must be assigned first.',
         type: 'error',
       });
       return;
@@ -115,28 +116,29 @@ export default function CandidateDetailsPage({ params }) {
       return;
     }
 
+    if (gmailStatus && !gmailStatus.authenticated) {
+      setToast({
+        message: 'Gmail is not connected. Please connect Gmail before sending interview invitations.',
+        type: 'error',
+      });
+      return;
+    }
+
     setInvitationLoading(true);
     setInvitationError(null);
 
     try {
-      // 1. Generate or retrieve active invitation token from backend
-      const invData = await interviewInvitationService.createOrGetInvitation(candidate.id);
-      setInvitation(invData);
-
-      // 2. Dispatch email to Tech Lead via EmailJS
-      const emailResult = await emailService.sendTechLeadInvitationEmail({
-        techLeadName: invData.tech_lead?.name || candidate.tech_lead?.name,
-        techLeadEmail: invData.tech_lead?.email || candidate.tech_lead?.email,
-        candidateName: invData.candidate?.name || candidate.name,
-        jobTitle: invData.job?.title || candidate.job?.title || 'Position',
-        evaluationLink: invData.evaluation_url,
-        expiresAt: invData.expires_at,
-      });
+      // Dispatches invitation via backend Google OAuth2 + Gmail API
+      const result = await interviewInvitationService.sendInvitation(candidate.id);
+      if (result?.invitation) {
+        setInvitation(result.invitation);
+      } else {
+        const updatedInv = await interviewInvitationService.getInvitationByCandidateId(candidate.id);
+        setInvitation(updatedInv);
+      }
 
       setToast({
-        message: emailResult.simulated
-          ? 'Secure invitation link generated! (Simulated email delivery mode)'
-          : 'Interview invitation sent successfully to Tech Lead!',
+        message: 'Interview invitation sent successfully to Tech Lead!',
         type: 'success',
       });
     } catch (err) {
@@ -535,7 +537,7 @@ export default function CandidateDetailsPage({ params }) {
                     )}
                   </div>
                   <p className="text-xs text-zinc-500 mt-0.5">
-                    Dispatch a secure, passwordless evaluation link to the assigned Tech Lead via EmailJS
+                    Dispatch a secure evaluation link to the assigned Tech Lead via Google Gmail API
                   </p>
                 </div>
               </div>
@@ -548,22 +550,28 @@ export default function CandidateDetailsPage({ params }) {
                       variant="primary"
                       onClick={handleSendInvitation}
                       isLoading={invitationLoading}
-                      disabled={candidate.tech_lead?.status === 'INACTIVE'}
+                      disabled={
+                        candidate.tech_lead?.status === 'INACTIVE' ||
+                        (gmailStatus && !gmailStatus.authenticated)
+                      }
                       className="flex items-center gap-2"
                     >
                       <Send className="w-4 h-4" />
-                      <span>Send Evaluation Access</span>
+                      <span>Send Interview Invitation</span>
                     </Button>
                   ) : invitation.status === 'PENDING' ? (
                     <Button
                       variant="secondary"
                       onClick={handleSendInvitation}
                       isLoading={invitationLoading}
-                      disabled={candidate.tech_lead?.status === 'INACTIVE'}
+                      disabled={
+                        candidate.tech_lead?.status === 'INACTIVE' ||
+                        (gmailStatus && !gmailStatus.authenticated)
+                      }
                       className="flex items-center gap-2"
                     >
                       <RefreshCw className={`w-4 h-4 ${invitationLoading ? 'animate-spin' : ''}`} />
-                      <span>Resend Evaluation Access</span>
+                      <span>Resend Invitation</span>
                     </Button>
                   ) : (
                     <div className="flex items-center gap-2 text-xs font-semibold text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-xl border border-emerald-200">
@@ -576,13 +584,34 @@ export default function CandidateDetailsPage({ params }) {
             </div>
 
             {/* Content Area */}
+            {gmailStatus && !gmailStatus.authenticated && (
+              <div className="bg-amber-50/80 border border-amber-200 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-start gap-3">
+                  <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                  <div>
+                    <h4 className="text-xs font-bold text-amber-950">
+                      Gmail is not connected.
+                    </h4>
+                    <p className="text-xs text-amber-800 mt-0.5">
+                      Connect your Gmail account to send interview invitations to Tech Leads.
+                    </p>
+                  </div>
+                </div>
+                <Link href="/hr/settings">
+                  <Button variant="outline" size="sm" className="bg-white shrink-0 hover:bg-amber-50">
+                    Connect Gmail →
+                  </Button>
+                </Link>
+              </div>
+            )}
+
             {!candidate.tech_lead ? (
               <div className="bg-amber-50/70 border border-amber-200 rounded-2xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div className="flex items-start gap-3">
                   <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
                   <div>
                     <h3 className="text-sm font-bold text-amber-900">
-                      No Tech Lead Assigned
+                      Tech Lead must be assigned first.
                     </h3>
                     <p className="text-xs text-amber-700 mt-0.5">
                       Assign an active Tech Lead to this candidate before sending an interview invitation.
@@ -652,7 +681,7 @@ export default function CandidateDetailsPage({ params }) {
                       {invitation?.created_at ? formatDate(invitation.created_at) : 'Not yet dispatched'}
                     </div>
                     <div className="text-xs text-zinc-500">
-                      {invitation ? 'Via EmailJS Dispatch' : 'Awaiting first dispatch'}
+                      {invitation ? 'Via Gmail API Delivery' : 'Awaiting first dispatch'}
                     </div>
                   </div>
 

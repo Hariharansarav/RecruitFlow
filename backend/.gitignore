@@ -15,6 +15,11 @@ lerna-debug.log*
 .env.*
 !.env.example
 
+# Google OAuth Credentials and Tokens
+credentials.json
+token.json
+
+
 # OS and Editor files
 .DS_Store
 Thumbs.db

@@ -15,6 +15,7 @@ import { Candidate } from '../candidates/entities/candidate.entity';
 import { TechLeadStatus } from '../tech-leads/enums/tech-lead-status.enum';
 
 import { InterviewEvaluation } from '../interview-evaluations/entities/interview-evaluation.entity';
+import { EmailService } from '../email/email.service';
 
 @Injectable()
 export class InterviewInvitationsService {
@@ -28,6 +29,7 @@ export class InterviewInvitationsService {
     @InjectRepository(InterviewEvaluation)
     private readonly evaluationRepository: Repository<InterviewEvaluation>,
     private readonly configService: ConfigService,
+    private readonly emailService: EmailService,
   ) {}
 
   /**
@@ -40,7 +42,7 @@ export class InterviewInvitationsService {
       'http://localhost:3000'
     ).replace(/\/$/, '');
 
-    return `${frontendUrl}/evaluation/${token}`;
+    return `${frontendUrl}/evaluate/${token}`;
   }
 
   /**
@@ -352,4 +354,81 @@ export class InterviewInvitationsService {
       evaluation_url: evalLink,
     };
   }
+
+  /**
+   * Dispatches interview invitation email via Google OAuth2 / Gmail API.
+   * Reuses existing PENDING invitation without duplicating tokens.
+   */
+  async sendInterviewInvitation(candidateId: number): Promise<any> {
+    // 1. Find candidate with Job and Tech Lead relations
+    const candidate = await this.candidateRepository.findOne({
+      where: { id: candidateId },
+      relations: ['job', 'tech_lead'],
+    });
+
+    // 2. Verify candidate exists
+    if (!candidate) {
+      throw new NotFoundException(`Candidate with ID ${candidateId} not found.`);
+    }
+
+    // 3. Verify candidate has an assigned Job
+    if (!candidate.job) {
+      throw new BadRequestException('Candidate has no assigned job.');
+    }
+
+    // 4. Verify candidate has an assigned Tech Lead
+    if (!candidate.tech_lead_id || !candidate.tech_lead) {
+      throw new BadRequestException(
+        'Please assign a Tech Lead before sending the interview invitation.',
+      );
+    }
+
+    // 5. Verify assigned Tech Lead is ACTIVE
+    if (candidate.tech_lead.status !== TechLeadStatus.ACTIVE) {
+      throw new BadRequestException('Selected Tech Lead is inactive.');
+    }
+
+    // 6 & 7. Create or reuse the interview invitation (guarantees idempotent reuse of valid pending tokens)
+    const invitationData = await this.createOrGetInvitation({
+      candidate_id: candidateId,
+    });
+
+    // 8. Generate evaluation URL
+    const evalLink =
+      invitationData.evaluation_link ||
+      invitationData.evaluation_url ||
+      this.getEvaluationLink(invitationData.token);
+
+    // 9 & 10. Call EmailService -> GmailService and send email
+    try {
+      const emailResult = await this.emailService.sendInterviewInvitationEmail({
+        techLeadName:
+          invitationData.tech_lead?.name || candidate.tech_lead.name,
+        techLeadEmail:
+          invitationData.tech_lead?.email || candidate.tech_lead.email,
+        candidateName: invitationData.candidate?.name || candidate.name,
+        jobTitle: invitationData.job?.title || candidate.job.title,
+        evaluationLink: evalLink,
+        expiresAt: invitationData.expires_at,
+      });
+
+      this.logger.log(
+        `[Gmail] Interview invitation email sent to Tech Lead ${candidate.tech_lead.email} for candidate ${candidate.id}`,
+      );
+
+      return {
+        success: true,
+        message: 'Interview invitation sent successfully to Tech Lead.',
+        messageId: emailResult.messageId,
+        invitation: invitationData,
+      };
+    } catch (err: any) {
+      this.logger.error(
+        `Failed to send interview invitation email for candidate ${candidateId}: ${err.message}`,
+      );
+      // Re-throw so HR receives clear feedback; existing PENDING invitation remains intact for retry
+      throw err;
+    }
+  }
 }
+

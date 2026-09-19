@@ -96,31 +96,13 @@ export default function SendMailModal({
     setServerError(null);
 
     try {
-      // 1. Create or retrieve active invitation
-      const invData = await interviewInvitationService.createOrGetInvitation(candidate.id);
+      // Dispatches invitation via backend Google OAuth2 + Gmail API
+      const result = await interviewInvitationService.sendInvitation(candidate.id);
+      const invData = result?.invitation || (await interviewInvitationService.getInvitationByCandidateId(candidate.id));
       setInvitation(invData);
 
-      // 2. Dispatch email via EmailJS
-      const result = await emailService.sendTechLeadInvitationEmail({
-        techLeadName: invData.tech_lead?.name || techLead.name,
-        techLeadEmail: invData.tech_lead?.email || techLead.email,
-        candidateName: invData.candidate?.name || candidate.name,
-        jobTitle: invData.job?.title || candidate.job?.title || 'Position',
-        evaluationLink: invData.evaluation_url,
-        expiresAt: invData.expires_at,
-      });
-
-      setSuccessInfo(
-        result.simulated
-          ? 'Secure invitation link generated! (Simulated email delivery mode)'
-          : 'Interview invitation email sent successfully to Tech Lead!'
-      );
-
-      onSuccess?.(
-        result.simulated
-          ? 'Invitation link generated (EmailJS simulated mode).'
-          : 'Interview invitation email sent to Tech Lead!'
-      );
+      setSuccessInfo('Interview invitation email sent successfully to Tech Lead via Gmail!');
+      onSuccess?.('Interview invitation email sent to Tech Lead!');
     } catch (err) {
       console.error('Failed to send interview invitation:', err);
       const msg =

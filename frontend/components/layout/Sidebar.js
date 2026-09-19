@@ -11,6 +11,7 @@ import {
   LogOut,
   X,
   Sparkles,
+  Settings,
 } from 'lucide-react';
 import authService from '@/services/authService';
 
@@ -25,6 +26,7 @@ export default function Sidebar({ role, user, isOpen, onClose }) {
     { label: 'Candidates', href: '/hr/candidates', icon: Users },
     { label: 'Tech Leads', href: '/hr/tech-leads', icon: UserCheck },
     { label: 'Evaluations', href: '/hr/evaluations', icon: ClipboardCheck },
+    { label: 'Settings', href: '/hr/settings', icon: Settings },
   ];
 
   const companyNavItems = [

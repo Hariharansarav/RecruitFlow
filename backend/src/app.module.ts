@@ -14,6 +14,7 @@ import { AuthModule } from './auth/auth.module';
 import { HrModule } from './hr/hr.module';
 import { TechLeadsModule } from './tech-leads/tech-leads.module';
 import { InterviewInvitationsModule } from './interview-invitations/interview-invitations.module';
+import { AiJobModule } from './ai-job/ai-job.module';
 
 @Module({
   imports: [
@@ -74,6 +75,7 @@ import { InterviewInvitationsModule } from './interview-invitations/interview-in
     HrModule,
     TechLeadsModule,
     InterviewInvitationsModule,
+    AiJobModule,
   ],
   controllers: [AppController],
   providers: [AppService],

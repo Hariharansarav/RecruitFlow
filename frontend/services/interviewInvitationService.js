@@ -14,6 +14,16 @@ export const interviewInvitationService = {
   },
 
   /**
+   * Dispatches interview invitation email to assigned Tech Lead via backend Gmail API
+   * @param {number|string} candidateId
+   * @returns {Promise<Object>}
+   */
+  async sendInvitation(candidateId) {
+    const response = await api.post(`/interview-invitations/${candidateId}/send`);
+    return response.data;
+  },
+
+  /**
    * Fetch interview invitation for a specific candidate
    * @param {number|string} candidateId
    * @returns {Promise<Object|null>}
