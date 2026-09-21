@@ -15,6 +15,12 @@ export interface GmailStatus {
   email?: string;
 }
 
+export interface EmailAttachment {
+  filename: string;
+  contentType: string;
+  content: Buffer;
+}
+
 @Injectable()
 export class GmailService implements OnModuleInit {
   private readonly logger = new Logger(GmailService.name);
@@ -357,12 +363,14 @@ export class GmailService implements OnModuleInit {
   }
 
   /**
-   * Sends a plain-text email using the Gmail API (gmail.users.messages.send).
+   * Sends an email using the Gmail API (gmail.users.messages.send).
+   * Supports plain-text message bodies and binary file attachments (PDF, DOCX, etc.).
    */
   public async sendEmail(
     to: string,
     subject: string,
     body: string,
+    attachments?: EmailAttachment[],
   ): Promise<{ success: boolean; messageId?: string }> {
     const status = await this.getStatus();
     if (!status.authenticated || !this.oauth2Client) {
@@ -370,19 +378,58 @@ export class GmailService implements OnModuleInit {
     }
 
     try {
-      this.logger.log(`[Gmail] Sending interview invitation`);
+      this.logger.log(
+        `[Gmail] Sending interview invitation to ${to}${attachments?.length ? ` with ${attachments.length} attachment(s)` : ''}`,
+      );
 
-      // Construct RFC 2822 compliant message
       const utf8Subject = `=?utf-8?B?${Buffer.from(subject).toString('base64')}?=`;
-      const emailLines = [
-        `To: ${to}`,
-        `Subject: ${utf8Subject}`,
-        'Content-Type: text/plain; charset=utf-8',
-        'MIME-Version: 1.0',
-        '',
-        body,
-      ];
-      const rawMessage = emailLines.join('\r\n');
+      let rawMessage: string;
+
+      if (attachments && attachments.length > 0) {
+        const boundary = `====RecruitFlow_Boundary_${Date.now()}_${Math.random().toString(36).substring(2, 9)}====`;
+        const emailLines: string[] = [
+          `To: ${to}`,
+          `Subject: ${utf8Subject}`,
+          'MIME-Version: 1.0',
+          `Content-Type: multipart/mixed; boundary="${boundary}"`,
+          '',
+          `--${boundary}`,
+          'Content-Type: text/plain; charset=utf-8',
+          'Content-Transfer-Encoding: 7bit',
+          '',
+          body,
+        ];
+
+        for (const att of attachments) {
+          const safeFilename = att.filename.replace(/[^\w\s.-]/gi, '_');
+          emailLines.push('');
+          emailLines.push(`--${boundary}`);
+          emailLines.push(
+            `Content-Type: ${att.contentType || 'application/octet-stream'}; name="${safeFilename}"`,
+          );
+          emailLines.push(
+            `Content-Disposition: attachment; filename="${safeFilename}"`,
+          );
+          emailLines.push('Content-Transfer-Encoding: base64');
+          emailLines.push('');
+          emailLines.push(att.content.toString('base64'));
+        }
+
+        emailLines.push('');
+        emailLines.push(`--${boundary}--`);
+        rawMessage = emailLines.join('\r\n');
+      } else {
+        const emailLines = [
+          `To: ${to}`,
+          `Subject: ${utf8Subject}`,
+          'Content-Type: text/plain; charset=utf-8',
+          'MIME-Version: 1.0',
+          '',
+          body,
+        ];
+        rawMessage = emailLines.join('\r\n');
+      }
+
       const encodedMessage = Buffer.from(rawMessage)
         .toString('base64')
         .replace(/\+/g, '-')

@@ -188,22 +188,22 @@ function CompanyCandidatesContent() {
       )}
 
       {/* Search & Status Filter Controls */}
-      <div className="bg-white border border-zinc-200/80 rounded-2xl p-4 shadow-xs space-y-4">
+      <div className="bg-white/95 backdrop-blur-xl border border-slate-200/90 rounded-2xl p-4 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] space-y-4">
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
           {/* Search Input */}
           <div className="relative flex-1">
-            <Search className="w-4 h-4 text-zinc-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
             <input
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Search candidate name, email, or job title..."
-              className="w-full pl-10 pr-9 py-2.5 rounded-xl border border-zinc-200 text-sm focus:outline-none focus:ring-2 focus:ring-black focus:border-black bg-zinc-50/50 hover:border-zinc-300 text-zinc-900 transition-all placeholder:text-zinc-400"
+              className="w-full pl-10 pr-9 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50/70 hover:bg-white text-slate-900 placeholder:text-slate-400 transition-colors"
             />
             {searchTerm && (
               <button
                 onClick={() => setSearchTerm('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
                 aria-label="Clear search"
               >
                 <X className="w-4 h-4" />
@@ -213,7 +213,7 @@ function CompanyCandidatesContent() {
         </div>
 
         {/* Filter Segmented Controls */}
-        <div className="flex items-center flex-wrap gap-1 p-1 bg-zinc-100 rounded-xl">
+        <div className="flex items-center flex-wrap gap-1 p-1 bg-slate-100/80 rounded-xl border border-slate-200/80">
           {[
             { label: 'All', value: 'ALL', count: counts.total },
             {
@@ -239,16 +239,16 @@ function CompanyCandidatesContent() {
                 onClick={() => setStatusFilter(tab.value)}
                 className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                   isActive
-                    ? 'bg-black text-white shadow-xs'
-                    : 'text-zinc-600 hover:text-zinc-950 hover:bg-zinc-200/50'
+                    ? 'bg-white text-slate-900 shadow-xs font-bold'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
                 }`}
               >
                 <span>{tab.label}</span>
                 <span
                   className={`px-1.5 py-0.5 rounded-full text-[10px] ${
                     isActive
-                      ? 'bg-zinc-800 text-white font-bold'
-                      : 'bg-zinc-200 text-zinc-700 font-medium'
+                      ? 'bg-blue-50 text-blue-700 font-bold'
+                      : 'bg-slate-200 text-slate-600 font-medium'
                   }`}
                 >
                   {tab.count}
@@ -261,9 +261,9 @@ function CompanyCandidatesContent() {
 
       {/* Loading Skeletons */}
       {loading && !error && (
-        <div className="bg-white border border-zinc-200 rounded-3xl p-6 shadow-xs animate-pulse space-y-4">
+        <div className="bg-white/95 backdrop-blur-xl border border-slate-200/90 rounded-2xl p-6 shadow-xs animate-pulse space-y-4">
           {[...Array(5)].map((_, i) => (
-            <div key={i} className="h-16 bg-zinc-100 rounded-xl" />
+            <div key={i} className="h-16 bg-slate-100 rounded-xl" />
           ))}
         </div>
       )}
@@ -272,125 +272,141 @@ function CompanyCandidatesContent() {
       {!loading && !error && (
         <>
           {filteredCandidates.length > 0 ? (
-            <div className="bg-white border border-zinc-200/80 rounded-3xl shadow-xs overflow-hidden">
+            <div className="bg-white/95 backdrop-blur-xl border border-slate-200/90 rounded-2xl shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] overflow-hidden">
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[1000px] text-left text-sm text-zinc-600">
-                  <thead className="bg-zinc-50 border-b border-zinc-200 text-xs uppercase font-semibold text-zinc-500 tracking-wider select-none">
+                <table className="w-full min-w-[1000px] text-left text-sm text-slate-600">
+                  <thead className="bg-slate-50/90 border-b border-slate-200/80 text-[11px] uppercase font-bold text-slate-500 tracking-wider select-none">
                     <tr>
-                      <th className="py-3.5 px-5 whitespace-nowrap min-w-[200px]">Candidate</th>
-                      <th className="py-3.5 px-5 whitespace-nowrap min-w-[170px]">Position</th>
-                      <th className="py-3.5 px-5 text-center whitespace-nowrap min-w-[110px]">JD Match</th>
-                      <th className="py-3.5 px-5 text-center whitespace-nowrap min-w-[110px]">Interview</th>
-                      <th className="py-3.5 px-5 text-center whitespace-nowrap min-w-[130px]">Status</th>
-                      <th className="py-3.5 px-5 whitespace-nowrap min-w-[120px]">Submitted Date</th>
-                      <th className="py-3.5 px-5 text-right whitespace-nowrap min-w-[160px]">Action</th>
+                      <th className="py-4 px-6 whitespace-nowrap min-w-[210px]">Candidate</th>
+                      <th className="py-4 px-6 whitespace-nowrap min-w-[170px]">Position</th>
+                      <th className="py-4 px-6 text-center whitespace-nowrap min-w-[110px]">JD Match</th>
+                      <th className="py-4 px-6 text-center whitespace-nowrap min-w-[110px]">Interview</th>
+                      <th className="py-4 px-6 text-center whitespace-nowrap min-w-[130px]">Status</th>
+                      <th className="py-4 px-6 whitespace-nowrap min-w-[120px]">Submitted Date</th>
+                      <th className="py-4 px-6 text-right whitespace-nowrap min-w-[160px]">Action</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-zinc-100">
-                    {filteredCandidates.map((c) => (
-                      <tr
-                        key={c.id}
-                        className="hover:bg-zinc-50/75 transition-colors group"
-                      >
-                        {/* Candidate Name & Contact */}
-                        <td className="py-4 px-5">
-                          <div className="space-y-0.5">
-                            <span className="font-bold text-zinc-950 block group-hover:underline transition-all">
-                              {c.name}
-                            </span>
-                            <span className="text-xs text-zinc-500 block">
-                              {c.email}
-                            </span>
-                            {c.phone && (
-                              <span className="text-xs text-zinc-400 block">
-                                {c.phone}
+                  <tbody className="divide-y divide-slate-100">
+                    {filteredCandidates.map((c) => {
+                      const initials = c.name
+                        ? c.name
+                            .split(' ')
+                            .map((n) => n[0])
+                            .slice(0, 2)
+                            .join('')
+                            .toUpperCase()
+                        : 'C';
+
+                      return (
+                        <tr
+                          key={c.id}
+                          className="hover:bg-slate-50/75 transition-colors group"
+                        >
+                          {/* Candidate Name & Contact */}
+                          <td className="py-4 px-6">
+                            <div className="flex items-center gap-3">
+                              <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-600 to-indigo-600 text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-sm">
+                                {initials}
+                              </div>
+                              <div className="space-y-0.5 min-w-0">
+                                <span className="font-bold text-slate-900 block group-hover:text-blue-600 transition-colors truncate">
+                                  {c.name}
+                                </span>
+                                <span className="text-xs text-slate-500 block truncate">
+                                  {c.email}
+                                </span>
+                                {c.phone && (
+                                  <span className="text-xs text-slate-400 block font-mono">
+                                    {c.phone}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </td>
+
+                          {/* Job Position & Department */}
+                          <td className="py-4 px-6">
+                            <div className="space-y-0.5">
+                              <span className="font-semibold text-slate-900 block">
+                                {c.job?.title || 'Open Requisition'}
                               </span>
-                            )}
-                          </div>
-                        </td>
-
-                        {/* Job Position & Department */}
-                        <td className="py-4 px-5">
-                          <div className="space-y-0.5">
-                            <span className="font-semibold text-zinc-900 block">
-                              {c.job?.title || 'Open Requisition'}
-                            </span>
-                            <span className="text-xs text-zinc-400 block">
-                              {c.job?.department || 'General'}
-                            </span>
-                          </div>
-                        </td>
-
-                        {/* JD Match */}
-                        <td className="py-4 px-5 text-center">
-                          <span
-                            className={`inline-flex items-center px-3 py-1 rounded-xl text-xs font-bold border ${getMatchBadgeClass(
-                              c.match_percentage,
-                            )}`}
-                          >
-                            {c.match_percentage ?? 0}%
-                          </span>
-                        </td>
-
-                        {/* Interview Score */}
-                        <td className="py-4 px-5 text-center">
-                          {c.interview?.score !== undefined ? (
-                            <div className="inline-flex items-center gap-1">
-                              <Star className="w-3.5 h-3.5 text-zinc-900 fill-zinc-900" />
-                              <span className="font-extrabold text-zinc-950 text-sm">
-                                {c.interview.score}
-                              </span>
-                              <span className="text-xs text-zinc-400 font-semibold">
-                                /5
+                              <span className="text-xs text-slate-500 block">
+                                {c.job?.department || 'General'}
                               </span>
                             </div>
-                          ) : (
-                            <span className="text-xs text-zinc-400 italic">
-                              Not recorded
-                            </span>
-                          )}
-                        </td>
+                          </td>
 
-                        {/* Status Badge */}
-                        <td className="py-4 px-5 text-center">
-                          <Badge status={c.status}>
-                            {getStatusLabel(c.status)}
-                          </Badge>
-                        </td>
-
-                        {/* Submitted Date */}
-                        <td className="py-4 px-5 text-xs text-zinc-500">
-                          {c.updated_at || c.created_at ? (
-                            <span className="flex items-center gap-1 text-zinc-500">
-                              <Calendar className="w-3.5 h-3.5 text-zinc-400" />
-                              {formatDate(c.updated_at || c.created_at)}
-                            </span>
-                          ) : (
-                            'Recent'
-                          )}
-                        </td>
-
-                        {/* Review Action */}
-                        <td className="py-4 px-5 text-right">
-                          <Link href={`/company/candidates/${c.id}`}>
-                            <Button
-                              variant="primary"
-                              size="sm"
-                              className="inline-flex items-center gap-1.5 shadow-xs"
+                          {/* JD Match */}
+                          <td className="py-4 px-6 text-center">
+                            <span
+                              className={`inline-flex items-center px-3 py-1 rounded-xl text-xs font-bold border ${getMatchBadgeClass(
+                                c.match_percentage,
+                              )}`}
                             >
-                              <Eye className="w-3.5 h-3.5" />
-                              <span>Review</span>
-                            </Button>
-                          </Link>
-                        </td>
-                      </tr>
-                    ))}
+                              {c.match_percentage ?? 0}%
+                            </span>
+                          </td>
+
+                          {/* Interview Score */}
+                          <td className="py-4 px-6 text-center">
+                            {c.interview?.score !== undefined ? (
+                              <div className="inline-flex items-center gap-1">
+                                <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
+                                <span className="font-extrabold text-slate-900 text-sm">
+                                  {c.interview.score}
+                                </span>
+                                <span className="text-xs text-slate-500 font-semibold">
+                                  /5
+                                </span>
+                              </div>
+                            ) : (
+                              <span className="text-xs text-slate-400 italic">
+                                Not recorded
+                              </span>
+                            )}
+                          </td>
+
+                          {/* Status Badge */}
+                          <td className="py-4 px-6 text-center">
+                            <Badge status={c.status}>
+                              {getStatusLabel(c.status)}
+                            </Badge>
+                          </td>
+
+                          {/* Submitted Date */}
+                          <td className="py-4 px-6 text-xs text-slate-500">
+                            {c.updated_at || c.created_at ? (
+                              <span className="flex items-center gap-1 text-slate-500 font-mono">
+                                <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                                {formatDate(c.updated_at || c.created_at)}
+                              </span>
+                            ) : (
+                              'Recent'
+                            )}
+                          </td>
+
+                          {/* Review Action */}
+                          <td className="py-4 px-6 text-right">
+                            <Link href={`/company/candidates/${c.id}`}>
+                              <Button
+                                variant="primary"
+                                size="sm"
+                                className="inline-flex items-center gap-1.5 shadow-xs"
+                              >
+                                <Eye className="w-3.5 h-3.5" />
+                                <span>Review</span>
+                              </Button>
+                            </Link>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
             </div>
           ) : (
-            <div className="bg-white rounded-3xl border border-zinc-200 shadow-xs p-12 text-center max-w-md mx-auto space-y-3">
+            <div className="bg-white/95 backdrop-blur-xl rounded-2xl border border-slate-200/90 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] p-12 text-center max-w-md mx-auto space-y-3">
               <div className="w-12 h-12 rounded-2xl bg-zinc-100 text-zinc-500 flex items-center justify-center mx-auto mb-2">
                 <Users className="w-6 h-6" />
               </div>

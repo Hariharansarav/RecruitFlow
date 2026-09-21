@@ -17,26 +17,26 @@ export default function Button({
 
   const variants = {
     primary:
-      'bg-zinc-950 hover:bg-zinc-900 active:bg-black text-white font-medium tracking-tight shadow-xs hover:shadow-sm border border-zinc-800/80 focus-visible:ring-2 focus-visible:ring-zinc-950 focus-visible:ring-offset-2 active:scale-[0.98]',
+      'bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-medium tracking-tight shadow-xs hover:shadow-glow-blue border border-blue-500/80 focus-visible:ring-2 focus-visible:ring-blue-600 active:scale-[0.98]',
     secondary:
-      'bg-white hover:bg-zinc-50 active:bg-zinc-100 text-zinc-900 font-medium tracking-tight border border-zinc-200/90 hover:border-zinc-300 shadow-xs focus-visible:ring-2 focus-visible:ring-zinc-400 focus-visible:ring-offset-2 active:scale-[0.98]',
-    danger:
-      'bg-rose-600 hover:bg-rose-700 active:bg-rose-800 text-white font-medium tracking-tight shadow-xs border border-rose-700/80 focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:ring-offset-2 active:scale-[0.98]',
-    success:
-      'bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-medium tracking-tight shadow-xs border border-emerald-700/80 focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 active:scale-[0.98]',
-    outline:
-      'bg-white hover:bg-zinc-50/90 active:bg-zinc-100 text-zinc-800 hover:text-zinc-950 font-medium tracking-tight border border-zinc-300/90 hover:border-zinc-400 shadow-xs focus-visible:ring-2 focus-visible:ring-zinc-950 active:scale-[0.98]',
-    ghost:
-      'text-zinc-600 hover:text-zinc-950 hover:bg-zinc-100/80 active:bg-zinc-200/70 font-medium active:scale-[0.98]',
+      'glass-pill hover:bg-white active:bg-zinc-100 text-zinc-900 font-medium tracking-tight border border-white/90 hover:border-blue-300 shadow-xs focus-visible:ring-2 focus-visible:ring-blue-400 active:scale-[0.98]',
     dark:
       'bg-zinc-900 hover:bg-zinc-800 active:bg-black text-white font-medium tracking-tight border border-zinc-800 shadow-xs active:scale-[0.98]',
+    danger:
+      'bg-rose-600 hover:bg-rose-700 active:bg-rose-800 text-white font-medium tracking-tight shadow-xs border border-rose-700/80 focus-visible:ring-2 focus-visible:ring-rose-500 active:scale-[0.98]',
+    success:
+      'bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-medium tracking-tight shadow-xs border border-emerald-700/80 focus-visible:ring-2 focus-visible:ring-emerald-500 active:scale-[0.98]',
+    outline:
+      'bg-white/80 hover:bg-white active:bg-zinc-50 text-zinc-800 hover:text-blue-700 font-medium tracking-tight border border-zinc-200/90 hover:border-blue-300 shadow-xs focus-visible:ring-2 focus-visible:ring-blue-500 active:scale-[0.98]',
+    ghost:
+      'text-zinc-600 hover:text-zinc-950 hover:bg-white/80 active:bg-zinc-100 font-medium active:scale-[0.98]',
   };
 
   const sizes = {
-    xs: 'text-xs px-2.5 py-1 gap-1.5 rounded-lg',
-    sm: 'text-xs px-3 py-1.5 gap-1.5 rounded-lg font-medium',
-    md: 'text-sm px-3.5 py-2 gap-2 rounded-xl font-medium',
-    lg: 'text-sm font-semibold px-5 py-2.5 gap-2 rounded-xl',
+    xs: 'text-xs px-2.5 py-1 gap-1.5 rounded-full',
+    sm: 'text-xs px-3 py-1.5 gap-1.5 rounded-full font-medium',
+    md: 'text-sm px-4 py-2 gap-2 rounded-full font-medium',
+    lg: 'text-sm font-semibold px-5 py-2.5 gap-2 rounded-full',
   };
 
   return (

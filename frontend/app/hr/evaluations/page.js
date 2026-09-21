@@ -30,6 +30,12 @@ import EvaluationDetailModal from '@/components/evaluations/EvaluationDetailModa
 import interviewEvaluationService from '@/services/interviewEvaluationService';
 import authService from '@/services/authService';
 import { formatDate } from '@/utils/dateUtils';
+import {
+  EvaluatedMetricIcon,
+  ScorecardTrophyIcon,
+  AiNeuralIcon,
+  HiringGrowthIcon,
+} from '@/components/ui/CraftedIcons';
 
 export default function HrEvaluationsPage() {
   const router = useRouter();
@@ -103,9 +109,16 @@ export default function HrEvaluationsPage() {
       0
     );
     const avgScore = (totalScore / total).toFixed(2);
-    const highMatch = evaluations.filter(
-      (ev) => Number(ev.jd_match_percentage) >= 75
-    ).length;
+    const highMatch = evaluations.filter((ev) => {
+      const s = Number(ev.overall_score ?? ev.score) || 0;
+      const m =
+        ev.jd_match_percentage != null
+          ? Number(ev.jd_match_percentage)
+          : s > 0
+          ? (s / 5) * 100
+          : 0;
+      return m >= 75;
+    }).length;
     const topRated = evaluations.filter(
       (ev) => (Number(ev.overall_score ?? ev.score) || 0) >= 4.0
     ).length;
@@ -151,7 +164,12 @@ export default function HrEvaluationsPage() {
 
       // 3. Quick Filter Tabs
       const score = Number(ev.overall_score ?? ev.score) || 0;
-      const matchPct = Number(ev.jd_match_percentage) || 0;
+      const matchPct =
+        ev.jd_match_percentage != null
+          ? Number(ev.jd_match_percentage)
+          : score > 0
+          ? Math.round((score / 5) * 100)
+          : 0;
 
       if (filterType === 'TOP_PERFORMER' && score < 4.0) return false;
       if (filterType === 'HIGH_MATCH' && matchPct < 75) return false;
@@ -165,8 +183,18 @@ export default function HrEvaluationsPage() {
     list.sort((a, b) => {
       const scoreA = Number(a.overall_score ?? a.score) || 0;
       const scoreB = Number(b.overall_score ?? b.score) || 0;
-      const matchA = Number(a.jd_match_percentage) || 0;
-      const matchB = Number(b.jd_match_percentage) || 0;
+      const matchA =
+        a.jd_match_percentage != null
+          ? Number(a.jd_match_percentage)
+          : scoreA > 0
+          ? (scoreA / 5) * 100
+          : 0;
+      const matchB =
+        b.jd_match_percentage != null
+          ? Number(b.jd_match_percentage)
+          : scoreB > 0
+          ? (scoreB / 5) * 100
+          : 0;
 
       switch (sortBy) {
         case 'SCORE_DESC':
@@ -242,93 +270,85 @@ export default function HrEvaluationsPage() {
         </div>
       </div>
 
-      {/* 2. Executive KPI Cards */}
+      {/* 2. Executive KPI Cards with Crafted Icons */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Total Evaluated */}
-        <div className="bg-white border border-zinc-200/90 rounded-2xl p-5 shadow-xs flex items-center justify-between">
+        <div className="bg-white/95 backdrop-blur-xl rounded-2xl p-5 border border-slate-200/90 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] hover:shadow-[0_12px_32px_-6px_rgba(245,158,11,0.12)] flex items-center justify-between group hover:-translate-y-1 transition-all duration-300">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
+            <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
               Evaluations
             </p>
-            <h3 className="text-2xl font-extrabold text-zinc-950 mt-1">
+            <h3 className="text-3xl sm:text-4xl font-black text-slate-900 mt-1 tracking-tight">
               {stats.total}
             </h3>
-            <p className="text-xs text-zinc-400 mt-0.5">Completed interviews</p>
+            <p className="text-xs text-slate-500 font-medium mt-0.5">Completed interviews</p>
           </div>
-          <div className="w-11 h-11 bg-zinc-100 text-zinc-800 rounded-2xl flex items-center justify-center flex-shrink-0">
-            <ClipboardCheck className="w-5 h-5" />
-          </div>
+          <EvaluatedMetricIcon className="w-11 h-11 group-hover:scale-105 transition-transform" />
         </div>
 
         {/* Avg Overall Score */}
-        <div className="bg-white border border-zinc-200/90 rounded-2xl p-5 shadow-xs flex items-center justify-between">
+        <div className="bg-white/95 backdrop-blur-xl rounded-2xl p-5 border border-slate-200/90 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] hover:shadow-[0_12px_32px_-6px_rgba(245,158,11,0.12)] flex items-center justify-between group hover:-translate-y-1 transition-all duration-300">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
+            <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
               Avg Score
             </p>
             <div className="flex items-baseline gap-1 mt-1">
-              <h3 className="text-2xl font-extrabold text-zinc-950">
+              <h3 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">
                 {stats.avgScore}
               </h3>
-              <span className="text-xs font-medium text-zinc-400">/ 5.0</span>
+              <span className="text-xs font-bold text-slate-400">/ 5.0</span>
             </div>
-            <p className="text-xs text-emerald-600 font-medium mt-0.5">Overall candidate average</p>
+            <p className="text-xs text-emerald-600 font-semibold mt-0.5">Candidate average</p>
           </div>
-          <div className="w-11 h-11 bg-amber-50 text-amber-600 rounded-2xl flex items-center justify-center flex-shrink-0">
-            <Star className="w-5 h-5 fill-amber-500 text-amber-500" />
-          </div>
+          <ScorecardTrophyIcon className="w-10 h-10 group-hover:scale-105 transition-transform" />
         </div>
 
         {/* High JD Match */}
-        <div className="bg-white border border-zinc-200/90 rounded-2xl p-5 shadow-xs flex items-center justify-between">
+        <div className="bg-white/95 backdrop-blur-xl rounded-2xl p-5 border border-slate-200/90 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] hover:shadow-[0_12px_32px_-6px_rgba(99,102,241,0.12)] flex items-center justify-between group hover:-translate-y-1 transition-all duration-300">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
+            <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
               High Match (≥75%)
             </p>
-            <h3 className="text-2xl font-extrabold text-zinc-950 mt-1">
+            <h3 className="text-3xl sm:text-4xl font-black text-slate-900 mt-1 tracking-tight">
               {stats.highMatch}
             </h3>
-            <p className="text-xs text-zinc-400 mt-0.5">Strong skill alignment</p>
+            <p className="text-xs text-slate-500 font-medium mt-0.5">Strong skill alignment</p>
           </div>
-          <div className="w-11 h-11 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center flex-shrink-0">
-            <Award className="w-5 h-5" />
-          </div>
+          <AiNeuralIcon className="w-10 h-10 group-hover:scale-105 transition-transform" />
         </div>
 
         {/* Top Performers */}
-        <div className="bg-white border border-zinc-200/90 rounded-2xl p-5 shadow-xs flex items-center justify-between">
+        <div className="bg-white/95 backdrop-blur-xl rounded-2xl p-5 border border-slate-200/90 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] hover:shadow-[0_12px_32px_-6px_rgba(16,185,129,0.12)] flex items-center justify-between group hover:-translate-y-1 transition-all duration-300">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
+            <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
               Top Rated (≥4.0)
             </p>
-            <h3 className="text-2xl font-extrabold text-zinc-950 mt-1">
+            <h3 className="text-3xl sm:text-4xl font-black text-slate-900 mt-1 tracking-tight">
               {stats.topRated}
             </h3>
-            <p className="text-xs text-zinc-400 mt-0.5">Prime hiring candidates</p>
+            <p className="text-xs text-slate-500 font-medium mt-0.5">Prime hiring candidates</p>
           </div>
-          <div className="w-11 h-11 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center flex-shrink-0">
-            <Sparkles className="w-5 h-5" />
-          </div>
+          <HiringGrowthIcon className="w-10 h-10 group-hover:scale-105 transition-transform" />
         </div>
       </div>
 
       {/* 3. Search & Interactive Filtering Suite */}
-      <div className="bg-white border border-zinc-200/90 rounded-2xl p-4 shadow-xs space-y-3">
+      <div className="bg-white/95 backdrop-blur-xl rounded-2xl p-4 sm:p-5 border border-slate-200/90 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] space-y-3.5">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
           {/* Search bar */}
           <div className="relative flex-1">
-            <Search className="w-4 h-4 text-zinc-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
             <input
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Search by candidate name, email, job, skills, or interviewer notes..."
-              className="w-full pl-10 pr-9 py-2 rounded-xl border border-zinc-200 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-950 focus:border-zinc-950 bg-zinc-50/60 hover:border-zinc-300 text-zinc-900 transition-all placeholder:text-zinc-400"
+              className="w-full pl-10 pr-9 py-2.5 rounded-xl border border-slate-200 bg-slate-50/70 hover:bg-white focus:bg-white text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 transition-all"
             />
             {searchTerm && (
               <button
                 onClick={() => setSearchTerm('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700"
                 aria-label="Clear search"
               >
                 <X className="w-4 h-4" />
@@ -341,7 +361,7 @@ export default function HrEvaluationsPage() {
             <select
               value={jobFilter}
               onChange={(e) => setJobFilter(e.target.value)}
-              className="px-3 py-2 rounded-xl border border-zinc-200 text-xs font-semibold text-zinc-800 bg-white hover:border-zinc-300 focus:outline-none focus:ring-2 focus:ring-zinc-950"
+              className="px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 bg-white hover:border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-600/20 shadow-xs"
             >
               <option value="ALL">All Jobs ({evaluations.length})</option>
               {uniqueJobs.map((j) => (
@@ -355,7 +375,7 @@ export default function HrEvaluationsPage() {
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
-              className="px-3 py-2 rounded-xl border border-zinc-200 text-xs font-semibold text-zinc-800 bg-white hover:border-zinc-300 focus:outline-none focus:ring-2 focus:ring-zinc-950"
+              className="px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 bg-white hover:border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-600/20 shadow-xs"
             >
               <option value="NEWEST">Newest First</option>
               <option value="SCORE_DESC">Highest Score</option>
@@ -369,45 +389,45 @@ export default function HrEvaluationsPage() {
         <div className="flex items-center gap-1.5 overflow-x-auto pt-1 pb-0.5 text-xs select-none">
           <button
             onClick={() => setFilterType('ALL')}
-            className={`px-3 py-1.5 rounded-lg font-semibold transition-all whitespace-nowrap ${
+            className={`px-3 py-1.5 rounded-lg font-bold transition-all whitespace-nowrap ${
               filterType === 'ALL'
-                ? 'bg-zinc-950 text-white shadow-xs'
-                : 'text-zinc-600 hover:text-zinc-950 hover:bg-zinc-100'
+                ? 'bg-slate-900 text-white shadow-xs'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
             }`}
           >
             All Evaluations ({evaluations.length})
           </button>
           <button
             onClick={() => setFilterType('TOP_PERFORMER')}
-            className={`px-3 py-1.5 rounded-lg font-semibold transition-all whitespace-nowrap flex items-center gap-1 ${
+            className={`px-3 py-1.5 rounded-lg font-bold transition-all whitespace-nowrap flex items-center gap-1.5 ${
               filterType === 'TOP_PERFORMER'
-                ? 'bg-zinc-950 text-white shadow-xs'
-                : 'text-zinc-600 hover:text-zinc-950 hover:bg-zinc-100'
+                ? 'bg-slate-900 text-white shadow-xs'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
             }`}
           >
-            <Star className="w-3 h-3 text-amber-500 fill-amber-500" />
+            <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
             <span>Top Rated ({stats.topRated})</span>
           </button>
           <button
             onClick={() => setFilterType('HIGH_MATCH')}
-            className={`px-3 py-1.5 rounded-lg font-semibold transition-all whitespace-nowrap flex items-center gap-1 ${
+            className={`px-3 py-1.5 rounded-lg font-bold transition-all whitespace-nowrap flex items-center gap-1.5 ${
               filterType === 'HIGH_MATCH'
-                ? 'bg-zinc-950 text-white shadow-xs'
-                : 'text-zinc-600 hover:text-zinc-950 hover:bg-zinc-100'
+                ? 'bg-slate-900 text-white shadow-xs'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
             }`}
           >
-            <Award className="w-3 h-3 text-blue-500" />
+            <Award className="w-3.5 h-3.5 text-blue-500" />
             <span>High Match ({stats.highMatch})</span>
           </button>
           <button
             onClick={() => setFilterType('HAS_RESUME')}
-            className={`px-3 py-1.5 rounded-lg font-semibold transition-all whitespace-nowrap flex items-center gap-1 ${
+            className={`px-3 py-1.5 rounded-lg font-bold transition-all whitespace-nowrap flex items-center gap-1.5 ${
               filterType === 'HAS_RESUME'
-                ? 'bg-zinc-950 text-white shadow-xs'
-                : 'text-zinc-600 hover:text-zinc-950 hover:bg-zinc-100'
+                ? 'bg-slate-900 text-white shadow-xs'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
             }`}
           >
-            <FileText className="w-3 h-3 text-indigo-500" />
+            <FileText className="w-3.5 h-3.5 text-indigo-500" />
             <span>Has Resume ({stats.withResume})</span>
           </button>
         </div>
@@ -430,7 +450,7 @@ export default function HrEvaluationsPage() {
           {[...Array(3)].map((_, i) => (
             <div
               key={i}
-              className="bg-white border border-zinc-200/80 rounded-3xl p-6 shadow-xs h-36 space-y-4"
+              className="glass-card-elevated border border-zinc-200/80 rounded-3xl p-6 shadow-xs h-36 space-y-4"
             >
               <div className="flex justify-between items-center">
                 <div className="h-5 bg-zinc-200 rounded w-1/4" />
@@ -450,75 +470,93 @@ export default function HrEvaluationsPage() {
             <div className="space-y-4">
               {processedEvaluations.map((item) => {
                 const scoreNum = Number(item.overall_score ?? item.score) || 0;
-                const matchNum = Number(item.jd_match_percentage) || 0;
+                const matchNum =
+                  item.jd_match_percentage != null
+                    ? Number(item.jd_match_percentage)
+                    : scoreNum > 0
+                    ? Math.round((scoreNum / 5) * 100)
+                    : 0;
                 const candidate = item.candidate;
                 const job = item.job;
                 const skills = item.skills || [];
                 const resumeUrl = candidate?.resume_url;
                 const evaluatorName =
                   item.tech_lead?.name || item.hr?.name || 'Recruiter';
+                const initials = candidate?.name
+                  ? candidate.name
+                      .split(' ')
+                      .map((n) => n[0])
+                      .slice(0, 2)
+                      .join('')
+                      .toUpperCase()
+                  : 'C';
 
                 return (
                   <div
                     key={item.id}
-                    className="bg-white border border-zinc-200/90 rounded-3xl p-5 sm:p-6 shadow-xs hover:border-zinc-300 hover:shadow-md transition-all space-y-4"
+                    className="bg-white/95 backdrop-blur-xl border border-slate-200/90 rounded-2xl p-5 sm:p-6 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] hover:shadow-[0_12px_30px_-6px_rgba(0,0,0,0.08)] hover:border-slate-300 transition-all duration-300 space-y-4"
                   >
                     {/* Top Row: Candidate details, Job requisition, and Score indicators */}
                     <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4">
                       {/* Left: Identity & Requisition */}
-                      <div className="space-y-1.5 flex-1 min-w-0">
-                        <div className="flex items-center flex-wrap gap-2.5">
-                          <Link
-                            href={`/hr/candidates/${item.candidate_id}`}
-                            className="font-bold text-lg text-zinc-950 hover:text-indigo-600 transition-colors truncate"
-                            title={candidate?.name}
-                          >
-                            {candidate?.name || `Candidate #${item.candidate_id}`}
-                          </Link>
-                          <Badge status={candidate?.status || 'EVALUATED'}>
-                            {candidate?.status || 'Evaluated'}
-                          </Badge>
+                      <div className="flex items-start gap-3.5 flex-1 min-w-0">
+                        <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 text-white flex items-center justify-center font-bold text-sm shrink-0 shadow-xs">
+                          {initials}
                         </div>
+                        <div className="space-y-1.5 flex-1 min-w-0">
+                          <div className="flex items-center flex-wrap gap-2.5">
+                            <Link
+                              href={`/hr/candidates/${item.candidate_id}`}
+                              className="font-bold text-lg text-slate-900 hover:text-blue-600 transition-colors truncate"
+                              title={candidate?.name}
+                            >
+                              {candidate?.name || `Candidate #${item.candidate_id}`}
+                            </Link>
+                            <Badge status={candidate?.status || 'EVALUATED'}>
+                              {candidate?.status || 'Evaluated'}
+                            </Badge>
+                          </div>
 
-                        {/* Contact details */}
-                        <div className="flex items-center gap-2.5 text-xs text-zinc-500 flex-wrap">
-                          <span className="truncate">{candidate?.email}</span>
-                          {candidate?.phone && (
-                            <>
-                              <span className="text-zinc-300">•</span>
-                              <span className="font-mono text-zinc-400">{candidate?.phone}</span>
-                            </>
-                          )}
-                        </div>
-
-                        {/* Job Requisition & Evaluator Tags */}
-                        <div className="flex items-center gap-3 text-xs pt-1 flex-wrap">
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-zinc-100 font-semibold text-zinc-800">
-                            <Briefcase className="w-3.5 h-3.5 text-zinc-500" />
-                            <span>{job?.title || 'General Requisition'}</span>
-                            {job?.department && (
-                              <span className="text-zinc-400 font-normal">({job.department})</span>
+                          {/* Contact details */}
+                          <div className="flex items-center gap-2.5 text-xs text-slate-600 flex-wrap font-medium">
+                            <span className="truncate">{candidate?.email}</span>
+                            {candidate?.phone && (
+                              <>
+                                <span className="text-slate-300">•</span>
+                                <span className="font-mono text-slate-500">{candidate?.phone}</span>
+                              </>
                             )}
-                          </span>
+                          </div>
 
-                          <span className="inline-flex items-center gap-1.5 text-zinc-600 font-medium">
-                            <UserCheck className="w-3.5 h-3.5 text-indigo-600" />
-                            <span>Interviewer: <strong>{evaluatorName}</strong></span>
-                          </span>
-
-                          {item.created_at && (
-                            <span className="inline-flex items-center gap-1 text-zinc-400 font-normal">
-                              <Calendar className="w-3.5 h-3.5" />
-                              <span>{formatDate(item.created_at)}</span>
+                          {/* Job Requisition & Evaluator Tags */}
+                          <div className="flex items-center gap-3 text-xs pt-1 flex-wrap">
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 font-semibold text-slate-800 border border-slate-200/60">
+                              <Briefcase className="w-3.5 h-3.5 text-slate-500" />
+                              <span>{job?.title || 'General Requisition'}</span>
+                              {job?.department && (
+                                <span className="text-slate-500 font-normal">({job.department})</span>
+                              )}
                             </span>
-                          )}
+
+                            <span className="inline-flex items-center gap-1.5 text-slate-600 font-medium">
+                              <UserCheck className="w-3.5 h-3.5 text-indigo-600" />
+                              <span>Interviewer: <strong className="text-slate-900">{evaluatorName}</strong></span>
+                            </span>
+
+                            {item.created_at && (
+                              <span className="inline-flex items-center gap-1 text-slate-500 font-normal">
+                                <Calendar className="w-3.5 h-3.5" />
+                                <span>{formatDate(item.created_at)}</span>
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
 
                       {/* Right: Score and Match Badges */}
                       <div className="flex items-center gap-2.5 flex-shrink-0 self-start">
                         {/* JD Match Badge */}
-                        <div className={`px-3.5 py-2 rounded-2xl border text-center ${getMatchScoreBadge(matchNum)}`}>
+                        <div className={`px-3.5 py-2 rounded-xl border text-center shadow-xs ${getMatchScoreBadge(matchNum)}`}>
                           <span className="text-base font-black tracking-tight block">
                             {Math.round(matchNum)}%
                           </span>
@@ -528,7 +566,7 @@ export default function HrEvaluationsPage() {
                         </div>
 
                         {/* Overall Score Badge */}
-                        <div className={`px-4 py-2 rounded-2xl border text-center ${getScoreBadgeStyle(scoreNum)}`}>
+                        <div className={`px-4 py-2 rounded-xl border text-center shadow-xs ${getScoreBadgeStyle(scoreNum)}`}>
                           <div className="flex items-center justify-center gap-1 text-base font-black">
                             <Star className="w-4 h-4 fill-current" />
                             <span>{scoreNum.toFixed(2)}</span>
@@ -543,18 +581,18 @@ export default function HrEvaluationsPage() {
 
                     {/* Competency Skills Matrix Preview */}
                     {skills.length > 0 && (
-                      <div className="space-y-1.5 pt-2 border-t border-zinc-100">
-                        <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 block">
+                      <div className="space-y-1.5 pt-2 border-t border-slate-100">
+                        <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 block">
                           Skills Rated ({skills.length})
                         </span>
                         <div className="flex items-center gap-2 flex-wrap">
                           {skills.map((skillItem) => (
                             <span
                               key={skillItem.id || skillItem.skill}
-                              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-zinc-50 border border-zinc-200 text-xs font-medium text-zinc-800"
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100/90 border border-slate-200/80 text-xs font-semibold text-slate-800"
                             >
                               <span>{skillItem.skill}</span>
-                              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded bg-white text-zinc-950 font-bold border border-zinc-200 text-[11px]">
+                              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-white text-slate-900 font-bold border border-slate-200 text-[11px] shadow-2xs">
                                 <Star className="w-2.5 h-2.5 text-amber-500 fill-amber-500" />
                                 {skillItem.score}/5
                               </span>
@@ -566,13 +604,13 @@ export default function HrEvaluationsPage() {
 
                     {/* Recruiter / Evaluator Notes Snippet */}
                     {item.notes && (
-                      <div className="p-3 rounded-2xl bg-zinc-50/70 border border-zinc-200/60 text-xs text-zinc-600 italic line-clamp-2">
+                      <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80 text-xs text-slate-700 italic leading-relaxed">
                         &ldquo;{item.notes}&rdquo;
                       </div>
                     )}
 
                     {/* Action Bar with View Resume Button */}
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-zinc-100">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-slate-100">
                       {/* Left action: View Resume Button */}
                       <div>
                         {resumeUrl ? (
@@ -585,7 +623,7 @@ export default function HrEvaluationsPage() {
                             <Button
                               variant="secondary"
                               size="sm"
-                              className="flex items-center gap-1.5 border-indigo-200 text-indigo-700 hover:bg-indigo-50 hover:border-indigo-300 font-semibold"
+                              className="flex items-center gap-1.5 border border-indigo-200 bg-indigo-50/60 text-indigo-700 hover:bg-indigo-100 hover:border-indigo-300 font-semibold rounded-xl"
                               title="Open candidate's resume in a new tab"
                             >
                               <FileText className="w-4 h-4 text-indigo-600" />
@@ -596,10 +634,10 @@ export default function HrEvaluationsPage() {
                         ) : (
                           <button
                             disabled
-                            className="px-3 py-1.5 rounded-lg text-xs font-medium text-zinc-400 bg-zinc-50 border border-zinc-200/80 cursor-not-allowed flex items-center gap-1.5"
+                            className="px-3 py-1.5 rounded-xl text-xs font-medium text-slate-400 bg-slate-50 border border-slate-200 cursor-not-allowed flex items-center gap-1.5"
                             title="No resume URL uploaded for this candidate"
                           >
-                            <FileText className="w-3.5 h-3.5 text-zinc-300" />
+                            <FileText className="w-3.5 h-3.5 text-slate-300" />
                             <span>No Resume</span>
                           </button>
                         )}
@@ -611,7 +649,7 @@ export default function HrEvaluationsPage() {
                           variant="secondary"
                           size="sm"
                           onClick={() => setSelectedEvaluation(item)}
-                          className="flex items-center gap-1.5 font-medium"
+                          className="flex items-center gap-1.5 font-semibold text-slate-700 border border-slate-200 hover:bg-slate-100 rounded-xl"
                           title="Open full evaluation details scorecard"
                         >
                           <Eye className="w-3.5 h-3.5" />
@@ -622,7 +660,7 @@ export default function HrEvaluationsPage() {
                           <Button
                             variant="primary"
                             size="sm"
-                            className="flex items-center gap-1.5 font-medium"
+                            className="flex items-center gap-1.5 font-semibold bg-blue-600 hover:bg-blue-700 text-white shadow-xs rounded-xl"
                           >
                             <span>View Screening</span>
                             <ArrowRight className="w-3.5 h-3.5" />

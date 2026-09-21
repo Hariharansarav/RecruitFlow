@@ -10,12 +10,14 @@ import { CandidateMatchingService } from './candidate-matching.service';
 import { CandidatesController } from './candidates.controller';
 import { JobsModule } from '../jobs/jobs.module';
 import { UsersModule } from '../users/users.module';
+import { InterviewInvitationsModule } from '../interview-invitations/interview-invitations.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Candidate, Job, InterviewEvaluation, User, TechLead]),
     JobsModule,
     UsersModule,
+    InterviewInvitationsModule,
   ],
   controllers: [CandidatesController],
   providers: [CandidatesService, CandidateMatchingService],

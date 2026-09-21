@@ -3,32 +3,140 @@
 @tailwind utilities;
 
 :root {
-  --primary: #000000;
+  --primary: #2563EB;
+  --primary-glow: rgba(37, 99, 235, 0.25);
   --secondary: #18181b;
-  --background: #fafafa;
+  --background: #f1f5f9;
   --foreground: #09090b;
 }
 
 body {
-  background-color: var(--background);
+  background-color: #f6f5ef;
+  background-image: 
+    radial-gradient(at 5% 5%, rgba(250, 249, 244, 0.95) 0px, transparent 40%),
+    radial-gradient(at 95% 35%, rgba(254, 243, 199, 0.85) 0px, transparent 55%),
+    radial-gradient(at 90% 95%, rgba(253, 230, 138, 0.6) 0px, transparent 55%),
+    radial-gradient(at 15% 95%, rgba(245, 243, 232, 0.8) 0px, transparent 45%);
+  background-attachment: fixed;
   color: var(--foreground);
-  font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   -webkit-font-smoothing: antialiased;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.015em;
+  min-height: 100vh;
 }
 
-/* Custom scrollbar */
+/* Glassmorphism primitives */
+.glass-canvas {
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.95);
+  box-shadow: 
+    0 20px 50px -12px rgba(15, 23, 42, 0.08),
+    0 1px 3px 0 rgba(0, 0, 0, 0.02);
+}
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.95);
+  box-shadow: 
+    0 10px 30px -5px rgba(15, 23, 42, 0.04),
+    0 2px 8px -2px rgba(15, 23, 42, 0.02);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.glass-card:hover {
+  border-color: rgba(37, 99, 235, 0.35);
+  box-shadow: 
+    0 16px 40px -8px rgba(37, 99, 235, 0.12),
+    0 4px 12px -2px rgba(15, 23, 42, 0.04);
+  transform: translateY(-2px);
+}
+
+.glass-card-elevated {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.82) 100%);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.95);
+  box-shadow: 
+    0 20px 48px -12px rgba(15, 23, 42, 0.06),
+    0 2px 6px -1px rgba(0, 0, 0, 0.02);
+  transition: all 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.glass-card-elevated:hover {
+  box-shadow: 
+    0 24px 56px -10px rgba(37, 99, 235, 0.15),
+    0 4px 14px -2px rgba(15, 23, 42, 0.05);
+  transform: translateY(-2px);
+}
+
+.card-glow-blue {
+  box-shadow: 0 0 25px -4px rgba(37, 99, 235, 0.18);
+}
+
+.card-glow-amber {
+  box-shadow: 0 0 25px -4px rgba(245, 158, 11, 0.18);
+}
+
+.card-glow-emerald {
+  box-shadow: 0 0 25px -4px rgba(16, 185, 129, 0.18);
+}
+
+.glass-card-dark {
+  background: rgba(18, 18, 23, 0.94);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow: 
+    0 24px 50px -10px rgba(0, 0, 0, 0.35),
+    0 0 24px -2px rgba(37, 99, 235, 0.15);
+  transition: all 0.25s ease;
+}
+
+.glass-pill {
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.95);
+  box-shadow: 0 2px 6px -1px rgba(0, 0, 0, 0.04);
+  transition: all 0.2s ease;
+}
+
+.glass-nav-dock {
+  background: rgba(255, 255, 255, 0.78);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  box-shadow: 0 6px 24px -4px rgba(15, 23, 42, 0.07);
+}
+
+/* Subtle diagonal stripe pattern for pipeline pill */
+.pattern-stripes {
+  background-image: repeating-linear-gradient(
+    45deg,
+    rgba(203, 213, 225, 0.4),
+    rgba(203, 213, 225, 0.4) 6px,
+    transparent 6px,
+    transparent 12px
+  );
+}
+
+/* Custom smooth scrollbar */
 ::-webkit-scrollbar {
-  width: 5px;
-  height: 5px;
+  width: 6px;
+  height: 6px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #d4d4d8;
+  background: #cbd5e1;
   border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #71717a;
+  background: #94a3b8;
 }
+

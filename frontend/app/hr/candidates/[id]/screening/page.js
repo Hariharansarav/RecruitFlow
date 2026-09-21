@@ -127,13 +127,40 @@ export default function CandidateScreeningPage({ params }) {
   }, [job?.required_skills]);
 
   // Read-only score displays
-  const displayOverallScore = evaluation
-    ? Number(evaluation.score).toFixed(1)
-    : '0.0';
+  const displayOverallScore = useMemo(() => {
+    if (!evaluation) return '0.0';
+    const s = Number(evaluation.score ?? evaluation.overall_score ?? 0);
+    return s > 0 ? s.toFixed(1) : '0.0';
+  }, [evaluation]);
 
-  const displayMatchPercentage = evaluation
-    ? Math.round(Number(evaluation.jd_match_percentage ?? 0))
-    : 0;
+  const displayMatchPercentage = useMemo(() => {
+    if (!evaluation && !screeningData?.matching && !screeningData?.match) return 0;
+
+    // 1. Direct from evaluation
+    if (evaluation?.jd_match_percentage != null) {
+      return Math.round(Number(evaluation.jd_match_percentage));
+    }
+    if (evaluation?.match_percentage != null) {
+      return Math.round(Number(evaluation.match_percentage));
+    }
+
+    // 2. Direct from matching summary
+    const matching = screeningData?.matching || screeningData?.match;
+    if (matching?.matchPercentage != null) {
+      return Math.round(Number(matching.matchPercentage));
+    }
+    if (matching?.match_percentage != null) {
+      return Math.round(Number(matching.match_percentage));
+    }
+
+    // 3. Directly calculate based on the final mark (out of 5)
+    const rawScore = Number(evaluation?.score ?? evaluation?.overall_score ?? matching?.overallScore ?? 0);
+    if (rawScore > 0) {
+      return Math.round((rawScore / 5) * 100);
+    }
+
+    return 0;
+  }, [evaluation, screeningData]);
 
   // Submit Candidate to Company (HR Workflow Action)
   const handleConfirmSubmitToCompany = async () => {

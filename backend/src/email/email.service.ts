@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as nodemailer from 'nodemailer';
 import type { Transporter } from 'nodemailer';
-import { GmailService } from './gmail.service';
+import { GmailService, EmailAttachment } from './gmail.service';
 
 export interface SendInterviewInvitationParams {
   techLeadName: string;
@@ -11,6 +11,12 @@ export interface SendInterviewInvitationParams {
   jobTitle: string;
   evaluationLink: string;
   expiresAt: Date | string;
+  jdSummary?: string;
+  jobDepartment?: string;
+  jobLocation?: string;
+  jobExperience?: string;
+  requiredSkills?: string;
+  attachments?: EmailAttachment[];
 }
 
 @Injectable()
@@ -49,7 +55,8 @@ export class EmailService {
   }
 
   /**
-   * Sends an interview invitation email to the assigned Tech Lead via the Gmail API.
+   * Sends an interview invitation email to the assigned Tech Lead via the Gmail API,
+   * containing the Job Description summary and attached JD PDF + Candidate Resume.
    *
    * @param params Interview invitation details
    * @returns Promise<{ success: boolean, messageId?: string }>
@@ -64,6 +71,12 @@ export class EmailService {
       jobTitle,
       evaluationLink,
       expiresAt,
+      jdSummary,
+      jobDepartment,
+      jobLocation,
+      jobExperience,
+      requiredSkills,
+      attachments,
     } = params;
 
     const formattedDate = new Date(expiresAt).toLocaleDateString('en-GB', {
@@ -73,6 +86,49 @@ export class EmailService {
     });
 
     const subject = `Technical Interview Evaluation – ${candidateName}`;
+
+    // Build the Job Description Summary section
+    let summarySection = '';
+    if (jdSummary || requiredSkills) {
+      const metaLine = [
+        jobDepartment ? `Department: ${jobDepartment}` : null,
+        jobExperience ? `Experience: ${jobExperience}` : null,
+        jobLocation ? `Location: ${jobLocation}` : null,
+      ]
+        .filter(Boolean)
+        .join(' | ');
+
+      summarySection = `
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+JOB DESCRIPTION SUMMARY
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Position: ${jobTitle}${metaLine ? ` (${metaLine})` : ''}
+
+Role Overview:
+${jdSummary || 'Please refer to the attached Job Specification for detailed responsibilities.'}
+${
+  requiredSkills
+    ? `
+Key Competencies to Assess:
+${requiredSkills}`
+    : ''
+}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+`;
+    }
+
+    // Build attachments note
+    let attachmentsNote = '';
+    if (attachments && attachments.length > 0) {
+      const fileList = attachments
+        .map((att) => `• 📎 ${att.filename}`)
+        .join('\n');
+      attachmentsNote = `
+Attached Documents:
+${fileList}
+`;
+    }
+
     const body = `Hello ${techLeadName},
 
 You have been assigned to conduct the technical evaluation
@@ -83,7 +139,7 @@ ${candidateName}
 
 Position:
 ${jobTitle}
-
+${summarySection}
 Please use the secure link below to access the technical evaluation:
 
 ${evaluationLink}
@@ -96,14 +152,19 @@ Please complete the evaluation by rating the required technical
 skills and adding your interview comments.
 
 You do not need to create an account or log in.
-
+${attachmentsNote}
 Regards,
 Recruitment Team`;
 
     this.logger.log(
-      `Dispatching interview invitation via Gmail API to ${techLeadEmail}`,
+      `Dispatching interview invitation via Gmail API to ${techLeadEmail}${attachments?.length ? ` with ${attachments.length} attachment(s)` : ''}`,
     );
-    return this.gmailService.sendEmail(techLeadEmail, subject, body);
+    return this.gmailService.sendEmail(
+      techLeadEmail,
+      subject,
+      body,
+      attachments,
+    );
   }
 
   /**

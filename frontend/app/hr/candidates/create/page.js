@@ -366,6 +366,18 @@ export default function CreateCandidatePage() {
               </>
             )}
           </select>
+          {(() => {
+            const selJob = openJobs.find((j) => String(j.id) === String(formData.job_id));
+            if (selJob?.contact_email) {
+              return (
+                <div className="flex items-center gap-2 p-2.5 rounded-xl bg-blue-50 border border-blue-200/80 text-xs text-blue-950 font-medium mt-1.5">
+                  <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse" />
+                  <span>Evaluator Email: <strong className="font-bold text-blue-900">{selJob.contact_email}</strong> (Candidate evaluation form link will be dispatched here)</span>
+                </div>
+              );
+            }
+            return null;
+          })()}
           {errors.job_id && (
             <p className="text-xs font-medium text-red-600 mt-0.5">
               {errors.job_id}

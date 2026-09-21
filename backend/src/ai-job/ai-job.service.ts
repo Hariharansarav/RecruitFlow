@@ -155,6 +155,13 @@ export class AiJobService {
     // 5. Validate output
     const validatedData = this.validateJobOutput(rawResult);
 
+    // Auto-detect email from JD text if present
+    const emailMatch = extractedText.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
+    if (emailMatch) {
+      validatedData.contact_email = emailMatch[0];
+      this.logger.log(`[AI JOB] Auto-detected contact email: ${emailMatch[0]}`);
+    }
+
     this.logger.log('[AI JOB] Job data validated');
 
     return {

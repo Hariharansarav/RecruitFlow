@@ -11,6 +11,7 @@ export interface StructuredJobData {
   responsibilities: string[];
   qualifications: string[];
   location?: string;
+  contact_email?: string;
 }
 
 /**

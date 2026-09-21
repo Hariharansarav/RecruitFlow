@@ -33,6 +33,9 @@ export class Job {
   @Column({ type: 'varchar', length: 100 })
   location: string;
 
+  @Column({ name: 'contact_email', type: 'varchar', length: 255, nullable: true })
+  contact_email: string | null;
+
   @Column({
     type: 'enum',
     enum: JobStatus,

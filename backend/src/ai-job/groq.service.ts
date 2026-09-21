@@ -93,6 +93,64 @@ export class GroqService {
   }
 
   /**
+   * Summarizes a Job Description for a technical interviewer/Tech Lead.
+   * Generates a concise, 3-4 sentence summary highlighting the core purpose, technical focus, and critical skills.
+   * Includes robust fallback if Groq API is unreachable.
+   */
+  async summarizeJobDescription(
+    title: string,
+    description: string,
+    requiredSkills?: string,
+  ): Promise<string> {
+    const fallbackSummary = () => {
+      const cleanDesc = (description || '').replace(/\s+/g, ' ').trim();
+      const excerpt =
+        cleanDesc.length > 250
+          ? `${cleanDesc.substring(0, 247)}...`
+          : cleanDesc;
+      const skillsNote = requiredSkills
+        ? `\nKey Competencies: ${requiredSkills}`
+        : '';
+      return `Position Overview: ${title}. Key focus: ${excerpt}${skillsNote}`;
+    };
+
+    try {
+      const client = this.getGroqClient();
+
+      const completion = await client.chat.completions.create({
+        model: this.modelName,
+        messages: [
+          {
+            role: 'system',
+            content:
+              'You are an expert technical recruiter and interviewer assistant. Summarize the provided Job Description into 3 to 4 concise, high-impact sentences tailored for a Tech Lead who will conduct the technical evaluation. Highlight the role\'s primary objective, key technical domain, and the most critical competencies to assess. Do not use conversational filler or markdown headers; output only the professional summary paragraph.',
+          },
+          {
+            role: 'user',
+            content: `Job Title: ${title}\nRequired Skills: ${requiredSkills || 'N/A'}\nFull Job Description:\n${description}`,
+          },
+        ],
+        temperature: 0.3,
+        max_tokens: 300,
+      });
+
+      const summary = completion.choices?.[0]?.message?.content?.trim();
+      if (summary && summary.length > 20) {
+        this.logger.log(`[Groq] Successfully generated JD summary for "${title}"`);
+        return summary;
+      }
+
+      return fallbackSummary();
+    } catch (err: any) {
+      this.logger.warn(
+        `[Groq] AI summarization failed (${err.message}). Using structured fallback summary.`,
+      );
+      return fallbackSummary();
+    }
+  }
+
+
+  /**
    * Lazily ensure client is available, re-checking config if needed.
    */
   private getGroqClient(): Groq {

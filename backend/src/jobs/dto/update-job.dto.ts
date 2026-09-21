@@ -29,4 +29,8 @@ export class UpdateJobDto {
   @IsOptional()
   @IsEnum(JobStatus, { message: 'Status must be either OPEN or CLOSED' })
   status?: JobStatus;
+
+  @IsOptional()
+  @IsString({ message: 'Contact email must be a string' })
+  contact_email?: string;
 }

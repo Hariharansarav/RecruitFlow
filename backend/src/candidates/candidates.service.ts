@@ -20,6 +20,7 @@ import { User } from '../users/entities/user.entity';
 import { UserRole } from '../users/enums/user-role.enum';
 import { TechLead } from '../tech-leads/entities/tech-lead.entity';
 import { TechLeadStatus } from '../tech-leads/enums/tech-lead-status.enum';
+import { InterviewInvitationsService } from '../interview-invitations/interview-invitations.service';
 
 @Injectable()
 export class CandidatesService {
@@ -37,6 +38,7 @@ export class CandidatesService {
     @InjectRepository(TechLead)
     private readonly techLeadRepository: Repository<TechLead>,
     private readonly candidateMatchingService: CandidateMatchingService,
+    private readonly interviewInvitationsService: InterviewInvitationsService,
   ) {}
 
   /**
@@ -60,21 +62,35 @@ export class CandidatesService {
       throw new BadRequestException('Candidates can only be added to open jobs.');
     }
 
-    // 3. Verify that tech_lead_id is provided and valid
-    if (!tech_lead_id) {
-      throw new BadRequestException('Please select a Tech Lead for the interview.');
-    }
+    // 3. Resolve Tech Lead (use provided or auto-select first active tech lead)
+    let techLead: TechLead | null = null;
+    if (tech_lead_id) {
+      techLead = await this.techLeadRepository.findOne({
+        where: { id: tech_lead_id },
+      });
 
-    const techLead = await this.techLeadRepository.findOne({
-      where: { id: tech_lead_id },
-    });
+      if (!techLead) {
+        throw new NotFoundException('Selected Tech Lead was not found.');
+      }
+
+      if (techLead.status !== TechLeadStatus.ACTIVE) {
+        throw new BadRequestException('Selected Tech Lead is inactive.');
+      }
+    } else {
+      techLead = await this.techLeadRepository.findOne({
+        where: { status: TechLeadStatus.ACTIVE },
+        order: { id: 'ASC' },
+      });
+
+      if (!techLead) {
+        techLead = await this.techLeadRepository.findOne({
+          order: { id: 'ASC' },
+        });
+      }
+    }
 
     if (!techLead) {
-      throw new NotFoundException('Selected Tech Lead was not found.');
-    }
-
-    if (techLead.status !== TechLeadStatus.ACTIVE) {
-      throw new BadRequestException('Selected Tech Lead is inactive.');
+      throw new BadRequestException('No evaluator or tech lead available in the system.');
     }
 
     // 4. Create candidate with status APPLIED (skills default to empty string)
@@ -93,6 +109,23 @@ export class CandidatesService {
 
     const savedCandidate = await this.candidateRepository.save(candidate);
     CandidatesService.invalidateCache();
+
+    // 5. Automatically send evaluation email to JD contact_email or tech lead
+    const evaluationRecipient = job.contact_email || techLead.email;
+    if (evaluationRecipient) {
+      this.interviewInvitationsService
+        .sendInterviewInvitation(savedCandidate.id, evaluationRecipient)
+        .then(() => {
+          this.logger.log(
+            `[Evaluation Dispatch] Auto-sent candidate evaluation link to ${evaluationRecipient} for candidate ${savedCandidate.name} (Job: ${job.title})`,
+          );
+        })
+        .catch((dispatchErr) => {
+          this.logger.warn(
+            `[Evaluation Dispatch] Notice: Could not auto-dispatch evaluation email to ${evaluationRecipient}: ${dispatchErr.message}`,
+          );
+        });
+    }
 
     // Return candidate with basic job & tech lead info
     return this.findOne(savedCandidate.id);
@@ -484,13 +517,21 @@ export class CandidatesService {
           : Math.round(Number(evaluation.score) * requiredSkills.length);
       overallScore = Number(evaluation.score);
       matchPercentage =
-        maximumScore > 0 ? Math.round((totalScore / maximumScore) * 100) : 0;
+        evaluation.jd_match_percentage !== null &&
+        evaluation.jd_match_percentage !== undefined
+          ? Math.round(Number(evaluation.jd_match_percentage))
+          : maximumScore > 0
+          ? Math.round((totalScore / maximumScore) * 100)
+          : Math.round((overallScore / 5) * 100);
     }
 
     const evaluationPayload = evaluation
       ? {
           id: evaluation.id,
           score: overallScore,
+          overall_score: overallScore,
+          jd_match_percentage: matchPercentage,
+          match_percentage: matchPercentage,
           notes: evaluation.notes,
           skills:
             evaluation.skills?.map((s) => ({

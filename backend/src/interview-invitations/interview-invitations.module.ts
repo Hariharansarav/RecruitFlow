@@ -8,6 +8,7 @@ import { InterviewEvaluation } from '../interview-evaluations/entities/interview
 import { InterviewInvitationsService } from './interview-invitations.service';
 import { InterviewInvitationsController } from './interview-invitations.controller';
 import { EmailModule } from '../email/email.module';
+import { AiJobModule } from '../ai-job/ai-job.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { EmailModule } from '../email/email.module';
     ]),
     ConfigModule,
     EmailModule,
+    AiJobModule,
   ],
   controllers: [InterviewInvitationsController],
   providers: [InterviewInvitationsService],

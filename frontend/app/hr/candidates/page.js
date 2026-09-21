@@ -347,73 +347,73 @@ export default function HrCandidatesPage() {
         <>
           {/* Quick Metrics Bar */}
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
-            <div className="bg-white border border-zinc-200/90 rounded-2xl p-4 shadow-xs">
-              <span className="text-xs font-semibold uppercase tracking-wider text-zinc-400 block mb-1">
-                Total
+            <div className="bg-white/95 backdrop-blur-xl border border-slate-200/90 rounded-2xl p-4 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] hover:shadow-md transition-all">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
+                Total Talent
               </span>
-              <span className="text-2xl font-extrabold text-zinc-950">
+              <span className="text-2xl font-extrabold text-slate-900">
                 {stats.total}
               </span>
             </div>
-            <div className="bg-white border border-zinc-200/90 rounded-2xl p-4 shadow-xs">
-              <span className="text-xs font-semibold uppercase tracking-wider text-zinc-500 block mb-1">
+            <div className="bg-white/95 backdrop-blur-xl border border-slate-200/90 rounded-2xl p-4 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] hover:shadow-md transition-all">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
                 Applied
               </span>
-              <span className="text-2xl font-extrabold text-zinc-700">
+              <span className="text-2xl font-extrabold text-slate-700">
                 {stats.applied}
               </span>
             </div>
-            <div className="bg-white border border-zinc-200/90 rounded-2xl p-4 shadow-xs">
-              <span className="text-xs font-semibold uppercase tracking-wider text-amber-700 block mb-1">
+            <div className="bg-white/95 backdrop-blur-xl border border-slate-200/90 rounded-2xl p-4 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] hover:shadow-md transition-all">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-amber-600 block mb-1">
                 Evaluated
               </span>
-              <span className="text-2xl font-extrabold text-amber-900">
+              <span className="text-2xl font-extrabold text-amber-600">
                 {stats.evaluated}
               </span>
             </div>
-            <div className="bg-white border border-zinc-200/90 rounded-2xl p-4 shadow-xs">
-              <span className="text-xs font-semibold uppercase tracking-wider text-blue-700 block mb-1">
+            <div className="bg-white/95 backdrop-blur-xl border border-slate-200/90 rounded-2xl p-4 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] hover:shadow-md transition-all">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-blue-600 block mb-1">
                 Submitted
               </span>
-              <span className="text-2xl font-extrabold text-blue-900">
+              <span className="text-2xl font-extrabold text-blue-600">
                 {stats.submitted}
               </span>
             </div>
-            <div className="bg-white border border-zinc-200/90 rounded-2xl p-4 shadow-xs">
-              <span className="text-xs font-semibold uppercase tracking-wider text-emerald-700 block mb-1">
+            <div className="bg-white/95 backdrop-blur-xl border border-slate-200/90 rounded-2xl p-4 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] hover:shadow-md transition-all">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-600 block mb-1">
                 Accepted
               </span>
-              <span className="text-2xl font-extrabold text-emerald-900">
+              <span className="text-2xl font-extrabold text-emerald-600">
                 {stats.accepted}
               </span>
             </div>
-            <div className="bg-white border border-zinc-200/90 rounded-2xl p-4 shadow-xs">
-              <span className="text-xs font-semibold uppercase tracking-wider text-rose-700 block mb-1">
+            <div className="bg-white/95 backdrop-blur-xl border border-slate-200/90 rounded-2xl p-4 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] hover:shadow-md transition-all">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-rose-600 block mb-1">
                 Rejected
               </span>
-              <span className="text-2xl font-extrabold text-rose-900">
+              <span className="text-2xl font-extrabold text-rose-600">
                 {stats.rejected}
               </span>
             </div>
           </div>
 
           {/* Search, Status & Job Filter Controls */}
-          <div className="bg-white border border-zinc-200/90 rounded-2xl p-4 sm:p-5 shadow-xs space-y-4">
+          <div className="bg-white/95 backdrop-blur-xl border border-slate-200/90 rounded-2xl p-4 sm:p-5 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] space-y-4">
             <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
               {/* Search Bar */}
               <div className="relative flex-1">
-                <Search className="w-4 h-4 text-zinc-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                 <input
                   type="text"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   placeholder="Search candidates by name, email, phone, or job title..."
-                  className="w-full pl-10 pr-9 py-2 rounded-xl border border-zinc-300 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-950 focus:border-zinc-950 bg-white placeholder-zinc-400"
+                  className="w-full pl-10 pr-9 py-2.5 rounded-xl border border-slate-200 bg-slate-50/70 hover:bg-white focus:bg-white text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 transition-all"
                 />
                 {searchTerm && (
                   <button
                     onClick={() => setSearchTerm('')}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-950"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700"
                     aria-label="Clear search"
                   >
                     <X className="w-4 h-4" />
@@ -426,7 +426,7 @@ export default function HrCandidatesPage() {
                 <select
                   value={jobFilter}
                   onChange={(e) => setJobFilter(e.target.value)}
-                  className="w-full px-3.5 py-2 rounded-xl border border-zinc-300 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-950 focus:border-zinc-950 bg-white text-zinc-900 font-medium"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600/20 bg-white text-slate-800 font-semibold shadow-xs"
                 >
                   <option value="ALL">All Jobs ({jobs.length})</option>
                   {jobs.map((j) => (
@@ -439,7 +439,7 @@ export default function HrCandidatesPage() {
             </div>
 
             {/* Status Tabs Bar */}
-            <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-zinc-100">
+            <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-slate-100">
               <div className="flex items-center gap-1.5 overflow-x-auto pb-1 max-w-full">
                 {[
                   { label: 'All', value: 'ALL', count: stats.total },
@@ -468,10 +468,10 @@ export default function HrCandidatesPage() {
                   <button
                     key={tab.value}
                     onClick={() => setStatusFilter(tab.value)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all ${
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-all ${
                       statusFilter === tab.value
-                        ? 'bg-zinc-950 text-white shadow-xs'
-                        : 'text-zinc-600 hover:text-zinc-950 hover:bg-zinc-100'
+                        ? 'bg-slate-900 text-white shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
                     }`}
                   >
                     {tab.label} ({tab.count})
@@ -486,7 +486,7 @@ export default function HrCandidatesPage() {
                     setStatusFilter('ALL');
                     setJobFilter('ALL');
                   }}
-                  className="text-xs font-semibold text-zinc-900 hover:text-zinc-600 flex items-center gap-1 transition-colors whitespace-nowrap"
+                  className="text-xs font-bold text-slate-700 hover:text-slate-950 flex items-center gap-1 transition-colors whitespace-nowrap"
                 >
                   <X className="w-3.5 h-3.5" /> Clear Filters
                 </button>
@@ -538,63 +538,70 @@ export default function HrCandidatesPage() {
           ) : (
             <>
               {/* Desktop & Tablet Table with Clean, Non-Overlapping Layout */}
-              <div className="hidden md:block w-full overflow-x-auto rounded-2xl border border-zinc-200/90 bg-white shadow-xs">
-                <table className="w-full min-w-[900px] text-left text-sm divide-y divide-zinc-200">
-                  <thead className="bg-zinc-50/90 text-xs font-semibold uppercase tracking-wider text-zinc-500 select-none">
+              <div className="hidden md:block w-full overflow-x-auto rounded-2xl border border-slate-200/90 bg-white shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)]">
+                <table className="w-full min-w-[900px] text-left text-sm divide-y divide-slate-200/80">
+                  <thead className="bg-slate-50/90 text-xs font-bold uppercase tracking-wider text-slate-500 select-none border-b border-slate-200/80">
                     <tr>
-                      <th className="px-5 py-3.5 whitespace-nowrap min-w-[220px]">Candidate</th>
-                      <th className="px-4 py-3.5 whitespace-nowrap min-w-[180px]">Job Requisition</th>
-                      <th className="px-4 py-3.5 whitespace-nowrap min-w-[160px]">Tech Lead</th>
-                      <th className="px-4 py-3.5 whitespace-nowrap min-w-[150px]">Status & Match</th>
-                      <th className="px-5 py-3.5 whitespace-nowrap min-w-[270px] text-right">Actions</th>
+                      <th className="px-6 py-4 whitespace-nowrap min-w-[240px]">Candidate</th>
+                      <th className="px-5 py-4 whitespace-nowrap min-w-[180px]">Job Requisition</th>
+                      <th className="px-5 py-4 whitespace-nowrap min-w-[160px]">Assessor / Reviewer</th>
+                      <th className="px-5 py-4 whitespace-nowrap min-w-[150px]">Status & Match</th>
+                      <th className="px-6 py-4 whitespace-nowrap min-w-[270px] text-right">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-zinc-100">
+                  <tbody className="divide-y divide-slate-100 bg-white">
                     {filteredCandidates.map((candidate) => {
                       return (
                         <tr
                           key={candidate.id}
-                          className="hover:bg-zinc-50/70 transition-colors group"
+                          className="hover:bg-slate-50/75 transition-colors group"
                         >
-                          <td className="px-5 py-4 min-w-[220px]">
-                            <Link
-                              href={`/hr/candidates/${candidate.id}`}
-                              className="font-bold text-zinc-950 hover:text-indigo-600 transition-colors block truncate max-w-[220px]"
-                              title={candidate.name}
-                            >
-                              {candidate.name}
-                            </Link>
-                            <div className="text-xs text-zinc-500 truncate max-w-[220px] mt-0.5" title={candidate.email}>
-                              {candidate.email}
-                            </div>
-                            {candidate.phone && (
-                              <div className="text-[11px] text-zinc-400 font-mono mt-0.5">
-                                {candidate.phone}
+                          <td className="px-6 py-4 min-w-[240px]">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white font-bold text-xs flex items-center justify-center shadow-xs flex-shrink-0 group-hover:scale-105 transition-transform">
+                                {candidate.name.substring(0, 2).toUpperCase()}
                               </div>
-                            )}
+                              <div className="min-w-0">
+                                <Link
+                                  href={`/hr/candidates/${candidate.id}`}
+                                  className="font-bold text-slate-900 hover:text-blue-600 transition-colors block truncate max-w-[180px]"
+                                  title={candidate.name}
+                                >
+                                  {candidate.name}
+                                </Link>
+                                <div className="text-xs text-slate-500 truncate max-w-[180px] mt-0.5 font-medium" title={candidate.email}>
+                                  {candidate.email}
+                                </div>
+                                {candidate.phone && (
+                                  <div className="text-[11px] text-slate-400 font-mono mt-0.5">
+                                    {candidate.phone}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
                           </td>
-                          <td className="px-4 py-4 min-w-[180px]">
-                            <span className="font-semibold text-zinc-800 block truncate max-w-[180px]" title={candidate.job?.title || 'General'}>
+                          <td className="px-5 py-4 min-w-[180px]">
+                            <span className="font-semibold text-slate-800 block truncate max-w-[180px]" title={candidate.job?.title || 'General'}>
                               {candidate.job?.title || 'General'}
                             </span>
                             {candidate.job?.department && (
-                              <span className="text-xs text-zinc-400 block mt-0.5 truncate max-w-[180px]">
+                              <span className="text-xs text-slate-500 block mt-0.5 truncate max-w-[180px]">
                                 {candidate.job.department}
                               </span>
                             )}
                           </td>
-                          <td className="px-4 py-4 text-xs min-w-[160px]">
+                          <td className="px-5 py-4 text-xs min-w-[160px]">
                             {candidate.tech_lead ? (
                               <div>
-                                <span className="font-semibold text-zinc-900 block truncate max-w-[160px]" title={candidate.tech_lead.name}>
+                                <span className="font-semibold text-slate-800 block truncate max-w-[160px]" title={candidate.tech_lead.name}>
                                   {candidate.tech_lead.name}
                                 </span>
-                                <span className="text-zinc-400 block truncate max-w-[160px] mt-0.5" title={candidate.tech_lead.email}>
+                                <span className="text-slate-400 block truncate max-w-[160px] mt-0.5 font-mono" title={candidate.tech_lead.email}>
                                   {candidate.tech_lead.email}
                                 </span>
                               </div>
                             ) : (
-                              <span className="text-zinc-400 italic">Unassigned</span>
+                              <span className="text-slate-400 italic">Auto-Assigned</span>
                             )}
                           </td>
                           <td className="px-4 py-4 min-w-[150px]">
@@ -604,22 +611,34 @@ export default function HrCandidatesPage() {
                               </Badge>
                             </div>
                             <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
-                              {candidate.match_percentage !== null &&
-                              candidate.match_percentage !== undefined ? (
-                                <span
-                                  className={`inline-flex items-center justify-center px-2 py-0.5 rounded text-[11px] font-bold border ${getMatchScoreBadge(
-                                    candidate.match_percentage,
-                                  )}`}
-                                >
-                                  {candidate.match_percentage}% Match
-                                </span>
-                              ) : null}
-                              {candidate.interview_score !== null &&
-                              candidate.interview_score !== undefined ? (
-                                <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-zinc-800 bg-zinc-100 px-2 py-0.5 rounded border border-zinc-200">
-                                  ★ {Number(candidate.interview_score).toFixed(1)}/5
-                                </span>
-                              ) : null}
+                              {(() => {
+                                const score = candidate.interview_score ?? candidate.overall_score;
+                                const matchPct =
+                                  candidate.match_percentage != null
+                                    ? Number(candidate.match_percentage)
+                                    : score != null
+                                    ? Math.round((Number(score) / 5) * 100)
+                                    : null;
+
+                                return (
+                                  <>
+                                    {matchPct !== null ? (
+                                      <span
+                                        className={`inline-flex items-center justify-center px-2 py-0.5 rounded text-[11px] font-bold border ${getMatchScoreBadge(
+                                          matchPct,
+                                        )}`}
+                                      >
+                                        {matchPct}% Match
+                                      </span>
+                                    ) : null}
+                                    {score !== null && score !== undefined ? (
+                                      <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-zinc-800 bg-zinc-100 px-2 py-0.5 rounded border border-zinc-200">
+                                        ★ {Number(score).toFixed(1)}/5
+                                      </span>
+                                    ) : null}
+                                  </>
+                                );
+                              })()}
                             </div>
                           </td>
                           <td className="px-5 py-4 text-right whitespace-nowrap min-w-[270px]">
@@ -711,11 +730,21 @@ export default function HrCandidatesPage() {
                         <div className="text-zinc-500">
                           Job: <span className="font-semibold text-zinc-800">{candidate.job?.title || 'General'}</span>
                         </div>
-                        {candidate.match_percentage !== null && candidate.match_percentage !== undefined && (
-                          <span className={`px-2 py-0.5 rounded-full text-xs font-bold border ${getMatchScoreBadge(candidate.match_percentage)}`}>
-                            {candidate.match_percentage}% Match
-                          </span>
-                        )}
+                        {(() => {
+                          const score = candidate.interview_score ?? candidate.overall_score;
+                          const matchPct =
+                            candidate.match_percentage != null
+                              ? Number(candidate.match_percentage)
+                              : score != null
+                              ? Math.round((Number(score) / 5) * 100)
+                              : null;
+
+                          return matchPct !== null ? (
+                            <span className={`px-2 py-0.5 rounded-full text-xs font-bold border ${getMatchScoreBadge(matchPct)}`}>
+                              {matchPct}% Match
+                            </span>
+                          ) : null;
+                        })()}
                       </div>
 
                       <div className="flex items-center justify-between text-xs text-zinc-500">

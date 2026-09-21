@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
-import { LogOut, User as UserIcon, ChevronDown, Settings } from 'lucide-react';
+import { LogOut, ChevronDown, Settings, User } from 'lucide-react';
 import authService from '@/services/authService';
 
 export default function UserMenu({ user }) {
@@ -28,58 +28,48 @@ export default function UserMenu({ user }) {
   };
 
   const initials = getInitials(user?.name);
-  const isHr = user?.role === 'HR';
 
   return (
     <div className="relative" ref={menuRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-3 p-1.5 rounded-xl hover:bg-zinc-100 transition-colors focus:outline-none"
+        className="w-10 h-10 rounded-full glass-pill p-0.5 flex items-center justify-center hover:border-blue-400 hover:shadow-glass hover:scale-105 transition-all focus:outline-none relative group"
         aria-label="User profile menu"
+        title={user?.name || 'User Profile'}
       >
-        <div className="w-9 h-9 rounded-xl bg-black text-white font-bold text-xs flex items-center justify-center shadow-xs border border-zinc-900">
+        <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 text-white font-bold text-xs flex items-center justify-center shadow-xs ring-2 ring-white">
           {initials}
         </div>
-
-        <div className="hidden md:flex flex-col text-left">
-          <span className="text-sm font-semibold text-zinc-900 line-clamp-1 leading-tight">
-            {user?.name || 'User'}
-          </span>
-          <span className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">
-            {user?.role || 'Guest'}
-          </span>
-        </div>
-
-        <ChevronDown className="w-4 h-4 text-zinc-400 hidden md:block" />
+        <span className="absolute bottom-0.5 right-0.5 w-2.5 h-2.5 bg-emerald-500 rounded-full ring-2 ring-white" />
       </button>
 
-      {/* Dropdown Menu */}
+      {/* Glassmorphic Dropdown Menu */}
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-56 bg-white border border-zinc-200 rounded-2xl shadow-xl py-1.5 z-50 animate-in fade-in slide-in-from-top-1 duration-150">
-          <div className="px-4 py-2.5 border-b border-zinc-100">
+        <div className="absolute right-0 mt-2.5 w-60 bg-white/95 backdrop-blur-2xl border border-white/90 rounded-2xl shadow-glass-lg py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
+          <div className="px-4 py-2.5 border-b border-zinc-100/80">
             <p className="text-sm font-bold text-zinc-950 truncate">
-              {user?.name}
+              {user?.name || 'Recruiter'}
             </p>
             <p className="text-xs text-zinc-400 truncate mt-0.5">{user?.email}</p>
           </div>
 
-          <div className="py-1">
+          <div className="py-1.5 px-1.5">
             <Link
               href="/hr/settings"
               onClick={() => setIsOpen(false)}
-              className="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-zinc-700 hover:bg-zinc-100 hover:text-zinc-950 transition-colors text-left font-medium"
+              className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-zinc-700 hover:bg-blue-50 hover:text-blue-700 transition-all text-left"
             >
-              <Settings className="w-4 h-4 text-zinc-400" />
-              <span>Email & Settings</span>
+              <Settings className="w-3.5 h-3.5 text-zinc-400" />
+              <span>Workspace Settings</span>
             </Link>
           </div>
 
-          <div className="border-t border-zinc-100 pt-1">
+          <div className="border-t border-zinc-100/80 pt-1.5 px-1.5">
             <button
               onClick={() => authService.logout()}
-              className="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors text-left font-semibold"
+              className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-rose-600 hover:bg-rose-50 transition-all text-left"
             >
-              <LogOut className="w-4 h-4 text-red-500" />
+              <LogOut className="w-3.5 h-3.5 text-rose-500" />
               <span>Sign out</span>
             </button>
           </div>

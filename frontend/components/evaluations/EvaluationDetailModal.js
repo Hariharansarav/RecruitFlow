@@ -38,7 +38,12 @@ export default function EvaluationDetailModal({ isOpen, evaluation, onClose }) {
   const job = evaluation.job;
   const skills = evaluation.skills || [];
   const scoreNum = Number(evaluation.overall_score ?? evaluation.score) || 0;
-  const matchNum = Number(evaluation.jd_match_percentage) || 0;
+  const matchNum =
+    evaluation.jd_match_percentage != null
+      ? Number(evaluation.jd_match_percentage)
+      : scoreNum > 0
+      ? Math.round((scoreNum / 5) * 100)
+      : 0;
   const resumeUrl = candidate?.resume_url;
 
   // Score badge color

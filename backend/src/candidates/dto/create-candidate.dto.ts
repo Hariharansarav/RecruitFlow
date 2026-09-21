@@ -29,8 +29,8 @@ export class CreateCandidateDto {
   @IsPositive({ message: 'job_id must be a positive integer' })
   job_id: number;
 
-  @IsNotEmpty({ message: 'Please select a Tech Lead for the interview.' })
+  @IsOptional()
   @IsInt({ message: 'tech_lead_id must be an integer' })
   @IsPositive({ message: 'tech_lead_id must be a positive integer' })
-  tech_lead_id: number;
+  tech_lead_id?: number;
 }

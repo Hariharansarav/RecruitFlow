@@ -208,7 +208,12 @@ export default function CandidateDetailsPage({ params }) {
         .filter(Boolean)
     : [];
 
-  const matchPercentage = matchData?.match_percentage ?? 0;
+  const matchPercentage =
+    evaluation?.jd_match_percentage != null
+      ? Math.round(Number(evaluation.jd_match_percentage))
+      : evaluation?.score != null && Number(evaluation.score) > 0
+      ? Math.round((Number(evaluation.score) / 5) * 100)
+      : matchData?.match_percentage ?? 0;
 
   const getMatchScoreColor = (score) => {
     if (score >= 85) return 'text-emerald-700 bg-emerald-50 border-emerald-300 font-bold ring-1 ring-emerald-500/20';
@@ -537,7 +542,7 @@ export default function CandidateDetailsPage({ params }) {
                     )}
                   </div>
                   <p className="text-xs text-zinc-500 mt-0.5">
-                    Dispatch a secure evaluation link to the assigned Tech Lead via Google Gmail API
+                    Dispatch secure evaluation access with AI JD summary, attached JD PDF, and candidate resume via Google Gmail API
                   </p>
                 </div>
               </div>
@@ -906,9 +911,16 @@ export default function CandidateDetailsPage({ params }) {
                       ))}
                     </div>
                   </div>
-                  {evaluation.jd_match_percentage !== null && evaluation.jd_match_percentage !== undefined && (
-                    <div className="pt-1 text-xs text-blue-600 font-semibold">
-                      {Math.round(evaluation.jd_match_percentage)}% JD Match
+                  {evaluation && (
+                    <div className="pt-1 text-xs text-blue-600 font-semibold flex items-center gap-1">
+                      <Award className="w-3.5 h-3.5 text-blue-600" />
+                      <span>
+                        {Math.round(
+                          evaluation.jd_match_percentage != null
+                            ? Number(evaluation.jd_match_percentage)
+                            : (Number(evaluation.score || 0) / 5) * 100
+                        )}% JD Match
+                      </span>
                     </div>
                   )}
                 </div>

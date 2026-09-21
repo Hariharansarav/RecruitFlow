@@ -132,7 +132,7 @@ export class JobsService {
     const existingJob = await this.findOne(id);
 
     // 3. Merge allowed updates (created_by is not included in UpdateJobDto)
-    const { title, department, description, required_skills, experience_required, location, status } = updateJobDto;
+    const { title, department, description, required_skills, experience_required, location, status, contact_email } = updateJobDto;
 
     if (title !== undefined) existingJob.title = title;
     if (department !== undefined) existingJob.department = department;
@@ -141,6 +141,7 @@ export class JobsService {
     if (experience_required !== undefined) existingJob.experience_required = experience_required;
     if (location !== undefined) existingJob.location = location;
     if (status !== undefined) existingJob.status = status;
+    if (contact_email !== undefined) existingJob.contact_email = contact_email;
 
     await this.jobRepository.save(existingJob);
 

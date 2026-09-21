@@ -10,6 +10,6 @@ import { DocumentParserService } from './document-parser.service';
   imports: [TypeOrmModule.forFeature([User])],
   controllers: [AiJobController],
   providers: [AiJobService, GroqService, DocumentParserService],
-  exports: [AiJobService],
+  exports: [AiJobService, GroqService],
 })
 export class AiJobModule {}

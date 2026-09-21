@@ -8,28 +8,28 @@ export default function AppLayout({ children, role, user }) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   return (
-    <div className="min-h-screen bg-[#fafafa] flex text-zinc-900 selection:bg-black selection:text-white">
-      {/* Sidebar (Desktop static / Mobile drawer) */}
+    <div className="min-h-screen w-full flex flex-col justify-start selection:bg-blue-600 selection:text-white">
+      {/* Full-bleed Canvas Container with no side gaps */}
+      <div className="w-full flex-1 flex flex-col relative">
+        {/* Floating Capsule Header */}
+        <Header
+          user={user}
+          onMenuClick={() => setIsMobileMenuOpen(true)}
+        />
+
+        {/* Main Content Area */}
+        <main className="flex-1 py-4 sm:py-6 px-4 sm:px-8 lg:px-10 w-full">
+          {children}
+        </main>
+      </div>
+
+      {/* Mobile Drawer (Only visible on mobile when toggled) */}
       <Sidebar
         role={role}
         user={user}
         isOpen={isMobileMenuOpen}
         onClose={() => setIsMobileMenuOpen(false)}
       />
-
-      {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0 lg:pl-64">
-        {/* Sticky Header */}
-        <Header
-          user={user}
-          onMenuClick={() => setIsMobileMenuOpen(true)}
-        />
-
-        {/* Content Body */}
-        <main className="flex-1 py-8 px-4 sm:px-6 lg:px-8 max-w-7xl w-full mx-auto">
-          {children}
-        </main>
-      </div>
     </div>
   );
 }

@@ -386,6 +386,18 @@ export default function AddCandidateModal({ isOpen, onClose, onSuccess }) {
                 </>
               )}
             </select>
+            {(() => {
+              const selJob = openJobs.find((j) => String(j.id) === String(formData.job_id));
+              if (selJob?.contact_email) {
+                return (
+                  <div className="flex items-center gap-2 p-2 rounded-xl bg-blue-50 border border-blue-200/70 text-[11px] text-blue-900 font-medium mt-1">
+                    <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse" />
+                    <span>Evaluator Email: <strong className="font-bold text-blue-950">{selJob.contact_email}</strong> (Evaluation form sent automatically)</span>
+                  </div>
+                );
+              }
+              return null;
+            })()}
             {errors.job_id && (
               <p className="text-xs font-medium text-red-600 mt-0.5">
                 {errors.job_id}

@@ -16,6 +16,11 @@ import { TechLeadStatus } from '../tech-leads/enums/tech-lead-status.enum';
 
 import { InterviewEvaluation } from '../interview-evaluations/entities/interview-evaluation.entity';
 import { EmailService } from '../email/email.service';
+import { PdfGeneratorService } from '../email/pdf-generator.service';
+import { EmailAttachment } from '../email/gmail.service';
+import { GroqService } from '../ai-job/groq.service';
+import * as fs from 'fs';
+import * as path from 'path';
 
 @Injectable()
 export class InterviewInvitationsService {
@@ -30,6 +35,8 @@ export class InterviewInvitationsService {
     private readonly evaluationRepository: Repository<InterviewEvaluation>,
     private readonly configService: ConfigService,
     private readonly emailService: EmailService,
+    private readonly pdfGeneratorService: PdfGeneratorService,
+    private readonly groqService: GroqService,
   ) {}
 
   /**
@@ -359,7 +366,7 @@ export class InterviewInvitationsService {
    * Dispatches interview invitation email via Google OAuth2 / Gmail API.
    * Reuses existing PENDING invitation without duplicating tokens.
    */
-  async sendInterviewInvitation(candidateId: number): Promise<any> {
+  async sendInterviewInvitation(candidateId: number, recipientEmailOverride?: string): Promise<any> {
     // 1. Find candidate with Job and Tech Lead relations
     const candidate = await this.candidateRepository.findOne({
       where: { id: candidateId },
@@ -399,27 +406,101 @@ export class InterviewInvitationsService {
       invitationData.evaluation_url ||
       this.getEvaluationLink(invitationData.token);
 
-    // 9 & 10. Call EmailService -> GmailService and send email
+    // 9. Generate AI JD Summary (with graceful fallback)
+    let jdSummary = '';
+    try {
+      jdSummary = await this.groqService.summarizeJobDescription(
+        candidate.job.title,
+        candidate.job.description,
+        candidate.job.required_skills,
+      );
+    } catch (aiErr: any) {
+      this.logger.warn(`Could not generate AI JD summary: ${aiErr.message}`);
+    }
+
+    // 10. Prepare attachments: Job Description PDF & Candidate Resume
+    const attachments: EmailAttachment[] = [];
+
+    // A. Generate Job Description PDF
+    try {
+      const jdPdfBuffer =
+        await this.pdfGeneratorService.generateJobDescriptionPdf({
+          title: candidate.job.title,
+          department: candidate.job.department,
+          location: candidate.job.location,
+          experience_required: candidate.job.experience_required,
+          description: candidate.job.description,
+          required_skills: candidate.job.required_skills,
+        });
+
+      const safeJobTitle =
+        candidate.job.title
+          .replace(/[^\w\s-]/gi, '')
+          .trim()
+          .replace(/\s+/g, '_') || 'Role';
+
+      attachments.push({
+        filename: `Job_Description_${safeJobTitle}.pdf`,
+        contentType: 'application/pdf',
+        content: jdPdfBuffer,
+      });
+    } catch (pdfErr: any) {
+      this.logger.error(
+        `Failed to generate Job Description PDF attachment: ${pdfErr.message}`,
+      );
+    }
+
+    // B. Fetch and attach Candidate Resume if present
+    if (candidate.resume_url && candidate.resume_url.trim().length > 0) {
+      try {
+        const resumeAttachment = await this.fetchResumeAttachment(candidate);
+        if (resumeAttachment) {
+          attachments.push(resumeAttachment);
+        }
+      } catch (resumeErr: any) {
+        this.logger.warn(
+          `Could not attach resume for candidate ${candidate.id}: ${resumeErr.message}`,
+        );
+      }
+    }
+
+    const targetRecipientEmail =
+      recipientEmailOverride ||
+      candidate.job.contact_email ||
+      invitationData.tech_lead?.email ||
+      candidate.tech_lead.email;
+
+    const targetRecipientName =
+      recipientEmailOverride || candidate.job.contact_email
+        ? 'Technical Evaluator'
+        : (invitationData.tech_lead?.name || candidate.tech_lead.name);
+
+    // 11. Call EmailService -> GmailService and send email with attachments
     try {
       const emailResult = await this.emailService.sendInterviewInvitationEmail({
-        techLeadName:
-          invitationData.tech_lead?.name || candidate.tech_lead.name,
-        techLeadEmail:
-          invitationData.tech_lead?.email || candidate.tech_lead.email,
+        techLeadName: targetRecipientName,
+        techLeadEmail: targetRecipientEmail,
         candidateName: invitationData.candidate?.name || candidate.name,
         jobTitle: invitationData.job?.title || candidate.job.title,
         evaluationLink: evalLink,
         expiresAt: invitationData.expires_at,
+        jdSummary,
+        jobDepartment: candidate.job.department,
+        jobLocation: candidate.job.location,
+        jobExperience: candidate.job.experience_required,
+        requiredSkills: candidate.job.required_skills,
+        attachments,
       });
 
       this.logger.log(
-        `[Gmail] Interview invitation email sent to Tech Lead ${candidate.tech_lead.email} for candidate ${candidate.id}`,
+        `[Gmail] Interview invitation email sent to ${targetRecipientEmail} for candidate ${candidate.id} (${attachments.length} attachment(s))`,
       );
 
       return {
         success: true,
         message: 'Interview invitation sent successfully to Tech Lead.',
         messageId: emailResult.messageId,
+        attachmentsCount: attachments.length,
         invitation: invitationData,
       };
     } catch (err: any) {
@@ -429,6 +510,112 @@ export class InterviewInvitationsService {
       // Re-throw so HR receives clear feedback; existing PENDING invitation remains intact for retry
       throw err;
     }
+  }
+
+  /**
+   * Resolves and downloads/reads candidate resume file for attachment.
+   */
+  private async fetchResumeAttachment(
+    candidate: Candidate,
+  ): Promise<EmailAttachment | null> {
+    const resumeUrl = candidate.resume_url?.trim();
+    if (!resumeUrl) return null;
+
+    const safeName =
+      candidate.name
+        .replace(/[^\w\s-]/gi, '')
+        .trim()
+        .replace(/\s+/g, '_') || 'Candidate';
+
+    // Case 1: Remote HTTP/HTTPS URL
+    if (resumeUrl.startsWith('http://') || resumeUrl.startsWith('https://')) {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+        const res = await fetch(resumeUrl, { signal: controller.signal });
+        clearTimeout(timeoutId);
+
+        if (!res.ok) {
+          this.logger.warn(
+            `Resume download returned HTTP ${res.status} for URL: ${resumeUrl}`,
+          );
+          return null;
+        }
+
+        const arrayBuffer = await res.arrayBuffer();
+        const buffer = Buffer.from(arrayBuffer);
+
+        if (!buffer || buffer.length === 0) return null;
+
+        const contentTypeHeader =
+          res.headers.get('content-type')?.toLowerCase() || '';
+
+        let ext = 'pdf';
+        let contentType = 'application/pdf';
+
+        if (
+          contentTypeHeader.includes('word') ||
+          contentTypeHeader.includes('docx') ||
+          resumeUrl.toLowerCase().endsWith('.docx')
+        ) {
+          ext = 'docx';
+          contentType =
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+        } else if (
+          contentTypeHeader.includes('msword') ||
+          resumeUrl.toLowerCase().endsWith('.doc')
+        ) {
+          ext = 'doc';
+          contentType = 'application/msword';
+        }
+
+        return {
+          filename: `${safeName}_Resume.${ext}`,
+          contentType,
+          content: buffer,
+        };
+      } catch (fetchErr: any) {
+        this.logger.warn(
+          `Failed to download resume from ${resumeUrl}: ${fetchErr.message}`,
+        );
+        return null;
+      }
+    }
+
+    // Case 2: Local filesystem path
+    const localPath = path.isAbsolute(resumeUrl)
+      ? resumeUrl
+      : path.resolve(process.cwd(), resumeUrl);
+
+    if (fs.existsSync(localPath)) {
+      try {
+        const buffer = fs.readFileSync(localPath);
+        const ext = path.extname(localPath).replace('.', '') || 'pdf';
+        const contentType =
+          ext === 'docx'
+            ? 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+            : ext === 'doc'
+            ? 'application/msword'
+            : 'application/pdf';
+
+        return {
+          filename: `${safeName}_Resume.${ext}`,
+          contentType,
+          content: buffer,
+        };
+      } catch (readErr: any) {
+        this.logger.warn(
+          `Failed to read local resume from ${localPath}: ${readErr.message}`,
+        );
+        return null;
+      }
+    }
+
+    this.logger.warn(
+      `Candidate resume URL is neither an accessible URL nor an existing file: ${resumeUrl}`,
+    );
+    return null;
   }
 }
 

@@ -178,14 +178,14 @@ export default function CompanyDashboardPage() {
       {/* Live Content */}
       {!loading && !error && (
         <>
-          {/* 1. Statistics Grid (Phase 20) */}
+          {/* 1. Statistics Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
             <StatCard
               icon={Users}
               label="Total Submitted"
               value={stats?.total_submitted ?? 0}
               description="Candidates in company pipeline"
-              color="brand"
+              color="indigo"
             />
             <StatCard
               icon={Clock}
@@ -211,32 +211,32 @@ export default function CompanyDashboardPage() {
           </div>
 
           {/* 2. Quick Actions Section */}
-          <div className="bg-white border border-zinc-200/80 rounded-3xl p-6 shadow-xs space-y-4">
-            <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
+          <div className="bg-white/95 backdrop-blur-xl border border-slate-200/90 rounded-2xl p-6 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] space-y-4">
+            <h2 className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
               Quick Actions
             </h2>
             <div className="flex flex-wrap gap-3">
               <Link href="/company/candidates">
                 <Button variant="secondary" className="flex items-center gap-2">
-                  <Users className="w-4 h-4 text-zinc-900" />
+                  <Users className="w-4 h-4 text-slate-800" />
                   <span>View All Candidates</span>
                 </Button>
               </Link>
               <Link href="/company/candidates?status=pending">
                 <Button variant="outline" className="flex items-center gap-2">
-                  <Clock className="w-4 h-4 text-zinc-700" />
+                  <Clock className="w-4 h-4 text-amber-600" />
                   <span>Pending Reviews ({stats?.pending_review ?? 0})</span>
                 </Button>
               </Link>
               <Link href="/company/candidates?status=accepted">
                 <Button variant="outline" className="flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-zinc-900" />
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
                   <span>Accepted Candidates ({stats?.accepted ?? 0})</span>
                 </Button>
               </Link>
               <Link href="/company/candidates?status=rejected">
                 <Button variant="outline" className="flex items-center gap-2">
-                  <XCircle className="w-4 h-4 text-zinc-600" />
+                  <XCircle className="w-4 h-4 text-rose-600" />
                   <span>Rejected Candidates ({stats?.rejected ?? 0})</span>
                 </Button>
               </Link>
@@ -244,13 +244,13 @@ export default function CompanyDashboardPage() {
           </div>
 
           {/* 3. Recent Candidates Section */}
-          <div className="bg-white border border-zinc-200/80 rounded-3xl p-6 sm:p-8 shadow-xs space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-zinc-100">
+          <div className="bg-white/95 backdrop-blur-xl border border-slate-200/90 rounded-2xl p-6 sm:p-8 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <div>
-                <h2 className="text-base font-bold text-zinc-950">
+                <h2 className="text-base font-bold text-slate-900">
                   Recent Candidates
                 </h2>
-                <p className="text-xs text-zinc-500">
+                <p className="text-xs text-slate-500">
                   Candidates recently submitted by HR for employer review.
                 </p>
               </div>
@@ -263,77 +263,93 @@ export default function CompanyDashboardPage() {
             </div>
 
             {recentCandidates.length > 0 ? (
-              <div className="divide-y divide-zinc-100">
-                {recentCandidates.map((c) => (
-                  <div
-                    key={c.id}
-                    className="py-4 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:bg-zinc-50/75 px-4 rounded-2xl transition-colors"
-                  >
-                    <div className="space-y-1 flex-1 min-w-0">
-                      <div className="flex items-center gap-3">
-                        <span className="font-bold text-zinc-950 truncate">
-                          {c.name}
-                        </span>
-                        <Badge status={c.status}>
-                          {getStatusLabel(c.status)}
-                        </Badge>
-                      </div>
-                      <div className="flex items-center gap-3 text-xs text-zinc-500 flex-wrap">
-                        <span className="flex items-center gap-1 text-zinc-700 font-medium">
-                          <Briefcase className="w-3.5 h-3.5 text-zinc-400" />
-                          {c.job?.title || 'Position'}
-                        </span>
-                        {c.job?.department && (
-                          <span>• {c.job.department}</span>
-                        )}
-                        {c.updated_at && (
-                          <span>• Submitted {formatDate(c.updated_at)}</span>
-                        )}
-                      </div>
-                    </div>
+              <div className="divide-y divide-slate-100">
+                {recentCandidates.map((c) => {
+                  const initials = c.name
+                    ? c.name
+                        .split(' ')
+                        .map((n) => n[0])
+                        .slice(0, 2)
+                        .join('')
+                        .toUpperCase()
+                    : 'C';
 
-                    <div className="flex items-center gap-4 flex-shrink-0 justify-between md:justify-end">
-                      {/* JD Match */}
-                      <div className="text-center sm:text-right">
-                        <span
-                          className={`inline-flex items-center px-3 py-1 rounded-xl text-xs font-bold border ${getMatchScoreBadgeColor(
-                            c.match_percentage,
-                          )}`}
-                        >
-                          {c.match_percentage ?? 0}% Match
-                        </span>
-                      </div>
-
-                      {/* Interview Score */}
-                      {c.interview?.score !== undefined && (
-                        <div className="text-center sm:text-right flex items-center gap-1">
-                          <Star className="w-3.5 h-3.5 text-zinc-900 fill-zinc-900" />
-                          <span className="text-sm font-extrabold text-zinc-950">
-                            {c.interview.score}
-                          </span>
-                          <span className="text-xs text-zinc-400 font-semibold">/ 5</span>
+                  return (
+                    <div
+                      key={c.id}
+                      className="py-4 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:bg-slate-50/75 px-4 rounded-2xl transition-colors"
+                    >
+                      <div className="flex items-start gap-3 flex-1 min-w-0">
+                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-600 to-indigo-600 text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-sm">
+                          {initials}
                         </div>
-                      )}
+                        <div className="space-y-1 flex-1 min-w-0">
+                          <div className="flex items-center gap-3">
+                            <span className="font-bold text-slate-900 truncate">
+                              {c.name}
+                            </span>
+                            <Badge status={c.status}>
+                              {getStatusLabel(c.status)}
+                            </Badge>
+                          </div>
+                          <div className="flex items-center gap-3 text-xs text-slate-500 flex-wrap">
+                            <span className="flex items-center gap-1 text-slate-700 font-medium">
+                              <Briefcase className="w-3.5 h-3.5 text-slate-400" />
+                              {c.job?.title || 'Position'}
+                            </span>
+                            {c.job?.department && (
+                              <span>• {c.job.department}</span>
+                            )}
+                            {c.updated_at && (
+                              <span>• Submitted {formatDate(c.updated_at)}</span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
 
-                      <Link href={`/company/candidates/${c.id}`}>
-                        <Button variant="outline" size="sm" className="flex items-center gap-1.5">
-                          <Eye className="w-3.5 h-3.5" />
-                          <span>View Candidate</span>
-                        </Button>
-                      </Link>
+                      <div className="flex items-center gap-4 flex-shrink-0 justify-between md:justify-end">
+                        {/* JD Match */}
+                        <div className="text-center sm:text-right">
+                          <span
+                            className={`inline-flex items-center px-3 py-1 rounded-xl text-xs font-bold border ${getMatchScoreBadgeColor(
+                              c.match_percentage,
+                            )}`}
+                          >
+                            {c.match_percentage ?? 0}% Match
+                          </span>
+                        </div>
+
+                        {/* Interview Score */}
+                        {c.interview?.score !== undefined && (
+                          <div className="text-center sm:text-right flex items-center gap-1">
+                            <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
+                            <span className="text-sm font-extrabold text-slate-900">
+                              {c.interview.score}
+                            </span>
+                            <span className="text-xs text-slate-500 font-semibold">/ 5</span>
+                          </div>
+                        )}
+
+                        <Link href={`/company/candidates/${c.id}`}>
+                          <Button variant="outline" size="sm" className="flex items-center gap-1.5">
+                            <Eye className="w-3.5 h-3.5" />
+                            <span>View Candidate</span>
+                          </Button>
+                        </Link>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <div className="py-12 text-center">
-                <div className="w-12 h-12 rounded-2xl bg-zinc-100 text-zinc-500 flex items-center justify-center mx-auto mb-3">
+                <div className="w-12 h-12 rounded-2xl bg-slate-100 text-slate-500 flex items-center justify-center mx-auto mb-3">
                   <Users className="w-6 h-6" />
                 </div>
-                <h3 className="text-sm font-semibold text-zinc-950">
+                <h3 className="text-sm font-semibold text-slate-900">
                   No candidates have been submitted for review yet.
                 </h3>
-                <p className="text-xs text-zinc-500 mt-1">
+                <p className="text-xs text-slate-500 mt-1">
                   Once HR evaluates applicants and submits them, their profiles will appear here.
                 </p>
               </div>
