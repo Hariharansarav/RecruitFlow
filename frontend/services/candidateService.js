@@ -82,6 +82,17 @@ const candidateService = {
   },
 
   /**
+   * Trigger AI Resume Screening for a candidate
+   * @param {number|string} id - Candidate ID
+   * @returns {Promise<Object>} Screening calculation details
+   */
+  async screenCandidate(id) {
+    candidatesCache = null;
+    const response = await api.post(`/candidates/${id}/screen`);
+    return response.data;
+  },
+
+  /**
    * Create a new candidate for an open job
    * @param {Object} candidateData - { name, email, phone, skills, resume_url, job_id }
    * @returns {Promise<Object>} Created candidate

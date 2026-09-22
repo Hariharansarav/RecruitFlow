@@ -214,19 +214,11 @@ export default function JobDetailsPage({ params }) {
         </div>
       )}
 
-      {/* Loading Skeleton */}
+      {/* Simple Loading State */}
       {loading && !error && (
-        <div className="bg-white border border-zinc-200 rounded-3xl p-8 shadow-xs animate-pulse space-y-6">
-          <div className="flex justify-between items-center">
-            <div className="h-8 bg-zinc-200 rounded w-64" />
-            <div className="h-6 bg-zinc-200 rounded w-20" />
-          </div>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-4 border-t border-zinc-100">
-            {[...Array(4)].map((_, i) => (
-              <div key={i} className="h-12 bg-zinc-100 rounded-xl" />
-            ))}
-          </div>
-          <div className="h-32 bg-zinc-100 rounded-2xl mt-6" />
+        <div className="py-20 text-center">
+          <div className="w-7 h-7 border-2 border-slate-300 border-t-slate-800 rounded-full animate-spin mx-auto mb-3" />
+          <p className="text-xs text-slate-500 font-medium">Loading job requisition...</p>
         </div>
       )}
 

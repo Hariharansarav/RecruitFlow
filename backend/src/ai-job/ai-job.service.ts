@@ -337,4 +337,37 @@ export class AiJobService {
 
     return validated;
   }
+
+  /**
+   * Enhances, redesigns, and polishes a Job Description from rough notes or drafts.
+   */
+  async enhanceDescription(
+    dto: { title?: string; description: string; department?: string },
+    hrId?: number,
+    roleHeader?: string,
+  ): Promise<{ success: boolean; data: { enhanced_description: string; original_length: number; enhanced_length: number } }> {
+    await this.validateHrUser(hrId, roleHeader);
+
+    const title = (dto.title || '').trim() || 'Role';
+    const description = (dto.description || '').trim();
+    const department = (dto.department || '').trim();
+
+    this.logger.log(`[AI JOB] Redesigning job description for "${title}"`);
+
+    const enhanced = await this.groqService.redesignAndEnhanceDescription(
+      title,
+      description,
+      department,
+    );
+
+    return {
+      success: true,
+      data: {
+        enhanced_description: enhanced,
+        original_length: description.length,
+        enhanced_length: enhanced.length,
+      },
+    };
+  }
 }
+

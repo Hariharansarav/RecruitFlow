@@ -9,7 +9,6 @@ import {
   Index,
 } from 'typeorm';
 import { Candidate } from '../../candidates/entities/candidate.entity';
-import { TechLead } from '../../tech-leads/entities/tech-lead.entity';
 import { InvitationStatus } from '../enums/invitation-status.enum';
 
 @Entity({ name: 'interview_invitations' })
@@ -25,12 +24,11 @@ export class InterviewInvitation {
   @JoinColumn({ name: 'candidate_id' })
   candidate: Candidate;
 
-  @Column({ name: 'tech_lead_id', type: 'integer', nullable: true })
-  tech_lead_id: number | null;
+  @Column({ name: 'interviewer_email', type: 'varchar', length: 255, nullable: true })
+  interviewer_email: string | null;
 
-  @ManyToOne(() => TechLead, { onDelete: 'SET NULL', nullable: true })
-  @JoinColumn({ name: 'tech_lead_id' })
-  tech_lead: TechLead | null;
+  @Column({ name: 'interviewer_name', type: 'varchar', length: 255, nullable: true })
+  interviewer_name: string | null;
 
   @Index({ unique: true })
   @Column({ type: 'varchar', length: 255, unique: true })

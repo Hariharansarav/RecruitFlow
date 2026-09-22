@@ -2,6 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { Logger, ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AppModule } from './app.module';
+import { json, urlencoded } from 'express';
 
 // Application bootstrap
 async function bootstrap() {
@@ -9,8 +10,13 @@ async function bootstrap() {
 
   try {
     const app = await NestFactory.create(AppModule, {
+      bodyParser: false,
       logger: ['error', 'warn', 'log', 'debug', 'verbose'],
     });
+
+    // Body parser with generous limits (removes size boundary issues for base64 resume uploads)
+    app.use(json({ limit: '250mb' }));
+    app.use(urlencoded({ limit: '250mb', extended: true }));
 
     // Enable global validation pipe for DTO validation
     app.useGlobalPipes(

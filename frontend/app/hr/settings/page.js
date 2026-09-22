@@ -15,7 +15,6 @@ import {
   ExternalLink,
   ShieldCheck,
 } from 'lucide-react';
-import { GmailBrandIcon } from '@/components/ui/CraftedIcons';
 
 export default function SettingsPage() {
   const searchParams = useSearchParams();
@@ -141,14 +140,14 @@ export default function SettingsPage() {
       </div>
 
       {/* Gmail Integration Card */}
-      <div className="bg-white/95 backdrop-blur-xl rounded-2xl p-6 sm:p-8 border border-slate-200/90 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] space-y-6">
+      <div className="exec-card p-6 sm:p-8 space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-slate-100">
           <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-2xl bg-white border border-slate-200/90 flex items-center justify-center shrink-0 shadow-[0_4px_16px_-4px_rgba(234,67,53,0.15)]">
-              <GmailBrandIcon className="w-9 h-9" />
+            <div className="w-12 h-12 rounded-xl bg-slate-900 text-white flex items-center justify-center shrink-0 shadow-xs">
+              <Mail className="w-6 h-6" />
             </div>
             <div>
-              <h3 className="text-lg font-extrabold text-slate-900">
+              <h3 className="text-lg font-bold text-slate-900">
                 Gmail Integration
               </h3>
               <p className="text-xs text-slate-500 mt-0.5 font-medium">
@@ -168,8 +167,8 @@ export default function SettingsPage() {
                 Checking...
               </span>
             ) : status.authenticated ? (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200/90 shadow-2xs">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-xs">
+                <span className="w-2 h-2 rounded-full bg-emerald-600" />
                 Connected
               </span>
             ) : (
@@ -184,7 +183,7 @@ export default function SettingsPage() {
         {/* Details Body */}
         {loading ? (
           <div className="py-8 flex items-center justify-center">
-            <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+            <div className="w-6 h-6 border-2 border-slate-300 border-t-slate-800 rounded-full animate-spin" />
           </div>
         ) : status.authenticated ? (
           <div className="space-y-6">

@@ -10,7 +10,6 @@ import {
   Eye,
   AlertCircle,
   Briefcase,
-  Star,
   CheckCircle2,
   Clock,
   XCircle,
@@ -132,10 +131,10 @@ function CompanyCandidatesContent() {
 
   const getMatchBadgeClass = (score) => {
     const val = Number(score) || 0;
-    if (val >= 85) return 'text-emerald-700 bg-emerald-50 border-emerald-300 font-bold ring-1 ring-emerald-500/20';
-    if (val >= 70) return 'text-blue-700 bg-blue-50 border-blue-300 font-bold ring-1 ring-blue-500/20';
-    if (val >= 50) return 'text-amber-800 bg-amber-50 border-amber-300 font-bold ring-1 ring-amber-500/20';
-    return 'text-rose-700 bg-rose-50 border-rose-200 font-medium';
+    if (val >= 85) return 'text-emerald-800 bg-emerald-50 border border-emerald-200 font-semibold shadow-xs';
+    if (val >= 70) return 'text-blue-800 bg-blue-50 border border-blue-200 font-semibold shadow-xs';
+    if (val >= 50) return 'text-amber-800 bg-amber-50 border border-amber-200 font-semibold shadow-xs';
+    return 'text-slate-700 bg-slate-100 border border-slate-200 font-medium';
   };
 
   const getEmptyStateMessage = () => {
@@ -259,12 +258,11 @@ function CompanyCandidatesContent() {
         </div>
       </div>
 
-      {/* Loading Skeletons */}
+      {/* Simple Loading State */}
       {loading && !error && (
-        <div className="bg-white/95 backdrop-blur-xl border border-slate-200/90 rounded-2xl p-6 shadow-xs animate-pulse space-y-4">
-          {[...Array(5)].map((_, i) => (
-            <div key={i} className="h-16 bg-slate-100 rounded-xl" />
-          ))}
+        <div className="py-20 text-center">
+          <div className="w-7 h-7 border-2 border-slate-300 border-t-slate-800 rounded-full animate-spin mx-auto mb-3" />
+          <p className="text-xs text-slate-500 font-medium">Loading candidate dossiers...</p>
         </div>
       )}
 
@@ -440,8 +438,9 @@ export default function CompanyCandidatesPage() {
   return (
     <Suspense
       fallback={
-        <div className="bg-white border border-zinc-200 rounded-2xl p-8 text-center animate-pulse">
-          <p className="text-sm text-zinc-400">Loading candidate pipeline...</p>
+        <div className="py-20 text-center">
+          <div className="w-7 h-7 border-2 border-slate-300 border-t-slate-800 rounded-full animate-spin mx-auto mb-3" />
+          <p className="text-xs text-slate-500 font-medium">Loading candidate pipeline...</p>
         </div>
       }
     >

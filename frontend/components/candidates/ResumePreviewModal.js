@@ -14,7 +14,6 @@ import {
   User,
   Mail,
   Phone,
-  Sparkles,
 } from 'lucide-react';
 import Button from '@/components/ui/Button';
 import Badge from '@/components/ui/Badge';
@@ -66,16 +65,16 @@ export default function ResumePreviewModal({
       aria-labelledby="resume-modal-title"
     >
       <div
-        className={`bg-white rounded-3xl border border-zinc-200 shadow-2xl flex flex-col overflow-hidden transition-all duration-200 ${
+        className={`bg-white rounded-2xl border border-slate-200 shadow-2xl flex flex-col overflow-hidden transition-all duration-200 ${
           isFullscreen
             ? 'w-full h-full max-w-none max-h-none rounded-none'
             : 'w-full max-w-5xl h-[90vh] max-h-[860px]'
         }`}
       >
         {/* Modal Header */}
-        <div className="px-5 py-4 bg-zinc-900 text-white flex items-center justify-between gap-4 border-b border-zinc-800 shrink-0">
+        <div className="px-5 py-4 bg-slate-900 text-white flex items-center justify-between gap-4 border-b border-slate-800 shrink-0">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-10 h-10 rounded-2xl bg-zinc-800 border border-zinc-700 flex items-center justify-center text-blue-400 shrink-0">
+            <div className="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-300 shrink-0">
               <FileText className="w-5 h-5" />
             </div>
             <div className="min-w-0">
@@ -87,7 +86,7 @@ export default function ResumePreviewModal({
                   {candidateName}&apos;s Resume
                 </h2>
                 {hasResume && (
-                  <span className="px-2 py-0.5 rounded-md text-[11px] font-semibold bg-blue-500/20 text-blue-300 border border-blue-500/30">
+                  <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-slate-800 text-slate-300 border border-slate-700">
                     {isPdf ? 'PDF Document' : 'Document Preview'}
                   </span>
                 )}
@@ -218,8 +217,8 @@ export default function ResumePreviewModal({
               {/* Iframe Loading Overlay */}
               {iframeLoading && (
                 <div className="absolute inset-0 bg-white/90 backdrop-blur-2xs flex flex-col items-center justify-center z-10 space-y-3">
-                  <div className="w-8 h-8 border-3 border-zinc-900 border-t-transparent rounded-full animate-spin" />
-                  <p className="text-xs font-semibold text-zinc-600">
+                  <div className="w-7 h-7 border-2 border-slate-300 border-t-slate-800 rounded-full animate-spin" />
+                  <p className="text-xs font-medium text-slate-500">
                     Loading Candidate Resume...
                   </p>
                 </div>

@@ -20,17 +20,37 @@ export class CreateCandidateDto {
   @IsString({ message: 'Phone must be a string' })
   phone: string;
 
-  @IsOptional()
+  @IsNotEmpty({ message: 'Resume document or URL is required' })
   @IsString({ message: 'resume_url must be a string' })
-  resume_url?: string;
+  resume_url: string;
+
+  @IsOptional()
+  @IsString()
+  resume_text?: string;
+
+  @IsOptional()
+  @IsString()
+  skills?: string;
 
   @IsNotEmpty({ message: 'job_id is required' })
   @IsInt({ message: 'job_id must be an integer' })
   @IsPositive({ message: 'job_id must be a positive integer' })
   job_id: number;
 
+
   @IsOptional()
-  @IsInt({ message: 'tech_lead_id must be an integer' })
-  @IsPositive({ message: 'tech_lead_id must be a positive integer' })
-  tech_lead_id?: number;
+  @IsString()
+  interviewer_email?: string;
+
+  @IsOptional()
+  @IsString()
+  interview_date?: string;
+
+  @IsOptional()
+  @IsString()
+  interview_time?: string;
+
+  @IsOptional()
+  @IsString()
+  gmeet_link?: string;
 }

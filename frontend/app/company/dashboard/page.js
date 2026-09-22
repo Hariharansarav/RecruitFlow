@@ -11,10 +11,8 @@ import {
   ArrowRight,
   AlertCircle,
   Eye,
-  Building2,
   Briefcase,
   Star,
-  Sparkles,
 } from 'lucide-react';
 import StatCard from '@/components/ui/StatCard';
 import Badge from '@/components/ui/Badge';
@@ -156,22 +154,11 @@ export default function CompanyDashboardPage() {
         </div>
       )}
 
-      {/* Loading Skeletons */}
+      {/* Loading State */}
       {loading && !error && (
-        <div className="space-y-8 animate-pulse">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-            {[...Array(4)].map((_, i) => (
-              <div
-                key={i}
-                className="bg-white border border-zinc-200 rounded-3xl p-6 shadow-xs h-32 space-y-3"
-              >
-                <div className="h-4 bg-zinc-200 rounded w-24" />
-                <div className="h-8 bg-zinc-200 rounded w-16" />
-                <div className="h-3 bg-zinc-100 rounded w-32" />
-              </div>
-            ))}
-          </div>
-          <div className="bg-white border border-zinc-200 rounded-3xl p-6 shadow-xs h-64" />
+        <div className="flex flex-col items-center justify-center py-24">
+          <div className="w-8 h-8 border-2 border-slate-200 border-t-slate-800 rounded-full animate-spin mb-4" />
+          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Loading company portal...</p>
         </div>
       )}
 
@@ -211,7 +198,7 @@ export default function CompanyDashboardPage() {
           </div>
 
           {/* 2. Quick Actions Section */}
-          <div className="bg-white/95 backdrop-blur-xl border border-slate-200/90 rounded-2xl p-6 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] space-y-4">
+          <div className="exec-card p-6 space-y-4">
             <h2 className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
               Quick Actions
             </h2>
@@ -244,7 +231,7 @@ export default function CompanyDashboardPage() {
           </div>
 
           {/* 3. Recent Candidates Section */}
-          <div className="bg-white/95 backdrop-blur-xl border border-slate-200/90 rounded-2xl p-6 sm:p-8 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] space-y-4">
+          <div className="exec-card p-6 sm:p-8 space-y-4">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <div>
                 <h2 className="text-base font-bold text-slate-900">
@@ -280,7 +267,7 @@ export default function CompanyDashboardPage() {
                       className="py-4 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:bg-slate-50/75 px-4 rounded-2xl transition-colors"
                     >
                       <div className="flex items-start gap-3 flex-1 min-w-0">
-                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-600 to-indigo-600 text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-sm">
+                        <div className="w-10 h-10 rounded-full bg-[#0B132B] text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-xs">
                           {initials}
                         </div>
                         <div className="space-y-1 flex-1 min-w-0">

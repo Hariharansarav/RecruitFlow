@@ -17,7 +17,7 @@ CRITICAL PARSING AND EXTRACTION RULES:
    - "department": Department if stated or clearly identifiable; otherwise a generic appropriate department (e.g. "Engineering").
    - "seniority_level": Identify from context (e.g. "Entry Level / Fresher", "Junior", "Mid-Level", "Senior", "Lead / Expert").
    - "experience_required": Required years or experience description stated in the JD (e.g. "3-5 years", "Minimum 2 years", "Freshers welcome"). If exact years are not explicitly stated, infer an appropriate experience requirement based on the role and seniority (e.g. "3+ years" for Mid-Level, "5+ years" for Senior, "0-1 years" for Fresher) so this field is NEVER empty.
-   - "description": Comprehensive, well-structured summary of the role based on the JD text.
+   - "description": Comprehensive, well-structured summary of the role based on the JD text formatted strictly as a single cohesive paragraph without any markdown headers or bullet points.
    - "required_skills": Array of distinct technical skills and technologies explicitly mentioned or required. Remove duplicates case-insensitively.
    - "responsibilities": Array of explicit key duties and responsibilities mentioned in the JD.
    - "qualifications": Array of explicit education, degree, or experience qualifications mentioned.

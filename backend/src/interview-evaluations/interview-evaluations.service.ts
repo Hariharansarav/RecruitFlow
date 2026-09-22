@@ -17,7 +17,6 @@ import { CreateInterviewEvaluationDto } from './dto/create-interview-evaluation.
 import { UpdateInterviewEvaluationDto } from './dto/update-interview-evaluation.dto';
 import { SubmitTechLeadEvaluationDto } from './dto/submit-tech-lead-evaluation.dto';
 import { CandidatesService } from '../candidates/candidates.service';
-import { TechLead } from '../tech-leads/entities/tech-lead.entity';
 import { InterviewInvitation } from '../interview-invitations/entities/interview-invitation.entity';
 import { InvitationStatus } from '../interview-invitations/enums/invitation-status.enum';
 
@@ -36,8 +35,6 @@ export class InterviewEvaluationsService {
     private readonly userRepository: Repository<User>,
     @InjectRepository(InterviewInvitation)
     private readonly invitationRepository: Repository<InterviewInvitation>,
-    @InjectRepository(TechLead)
-    private readonly techLeadRepository: Repository<TechLead>,
   ) {}
 
   /**
@@ -131,20 +128,8 @@ export class InterviewEvaluationsService {
             email: evaluation.hr.email,
           }
         : null,
-      tech_lead_id: evaluation.tech_lead_id || candidate?.tech_lead_id || null,
-      tech_lead: evaluation.tech_lead
-        ? {
-            id: evaluation.tech_lead.id,
-            name: evaluation.tech_lead.name,
-            email: evaluation.tech_lead.email,
-          }
-        : candidate?.tech_lead
-        ? {
-            id: candidate.tech_lead.id,
-            name: candidate.tech_lead.name,
-            email: candidate.tech_lead.email,
-          }
-        : null,
+      interviewer_email:
+        evaluation.interviewer_email || candidate?.interviewer_email || null,
       created_at: evaluation.created_at,
       updated_at: evaluation.updated_at,
     };
@@ -349,7 +334,7 @@ export class InterviewEvaluationsService {
    */
   async findAll(): Promise<any[]> {
     const evaluations = await this.evaluationRepository.find({
-      relations: ['candidate', 'candidate.job', 'hr', 'tech_lead', 'skills'],
+      relations: ['candidate', 'candidate.job', 'hr', 'skills'],
       order: {
         created_at: 'DESC',
       },
@@ -364,7 +349,7 @@ export class InterviewEvaluationsService {
   async findOne(id: number): Promise<any> {
     const evaluation = await this.evaluationRepository.findOne({
       where: { id },
-      relations: ['candidate', 'candidate.job', 'hr', 'tech_lead', 'skills'],
+      relations: ['candidate', 'candidate.job', 'hr', 'skills'],
     });
 
     if (!evaluation) {
@@ -380,7 +365,7 @@ export class InterviewEvaluationsService {
   async findByCandidateId(candidateId: number): Promise<any> {
     const evaluation = await this.evaluationRepository.findOne({
       where: { candidate_id: candidateId },
-      relations: ['candidate', 'candidate.job', 'hr', 'tech_lead', 'skills'],
+      relations: ['candidate', 'candidate.job', 'hr', 'skills'],
     });
 
     if (!evaluation) {
@@ -538,7 +523,7 @@ export class InterviewEvaluationsService {
     // 1. Find invitation by token
     const invitation = await this.invitationRepository.findOne({
       where: { token },
-      relations: ['candidate', 'candidate.job', 'tech_lead'],
+      relations: ['candidate', 'candidate.job'],
     });
 
     if (!invitation) {
@@ -646,14 +631,12 @@ export class InterviewEvaluationsService {
       evaluation.score = overallScore;
       evaluation.jd_match_percentage = jdMatchPercentage;
       evaluation.notes = dto.notes.trim();
-      evaluation.tech_lead_id = invitation.tech_lead_id;
-      evaluation.tech_lead = invitation.tech_lead;
+      evaluation.interviewer_email = invitation.interviewer_email;
     } else {
       evaluation = this.evaluationRepository.create({
         candidate_id: candidate.id,
         candidate,
-        tech_lead_id: invitation.tech_lead_id,
-        tech_lead: invitation.tech_lead,
+        interviewer_email: invitation.interviewer_email,
         score: overallScore,
         jd_match_percentage: jdMatchPercentage,
         notes: dto.notes.trim(),
@@ -687,13 +670,13 @@ export class InterviewEvaluationsService {
     CandidatesService.invalidateCache();
 
     this.logger.log(
-      `Tech Lead ${invitation.tech_lead?.name || invitation.tech_lead_id} submitted evaluation for candidate ${candidate.id}. Overall score: ${overallScore}/5, JD match: ${jdMatchPercentage}%`,
+      `Interviewer ${invitation.interviewer_email} submitted evaluation for candidate ${candidate.id}. Overall score: ${overallScore}/5, JD match: ${jdMatchPercentage}%`,
     );
 
     // 11. Return detailed formatted evaluation
     const completeEvaluation = await this.evaluationRepository.findOne({
       where: { id: savedEvaluation.id },
-      relations: ['skills', 'candidate', 'candidate.job', 'tech_lead'],
+      relations: ['skills', 'candidate', 'candidate.job'],
     });
 
     return this.formatEvaluationResponse(completeEvaluation);
@@ -705,7 +688,7 @@ export class InterviewEvaluationsService {
   async getEvaluationByToken(token: string): Promise<any> {
     const invitation = await this.invitationRepository.findOne({
       where: { token },
-      relations: ['candidate', 'candidate.job', 'tech_lead'],
+      relations: ['candidate', 'candidate.job'],
     });
 
     if (!invitation) {
@@ -728,7 +711,7 @@ export class InterviewEvaluationsService {
 
     const existingEval = await this.evaluationRepository.findOne({
       where: { candidate_id: candidate?.id },
-      relations: ['skills', 'candidate', 'candidate.job', 'tech_lead'],
+      relations: ['skills', 'candidate', 'candidate.job'],
     });
 
     return {
@@ -753,13 +736,8 @@ export class InterviewEvaluationsService {
             required_skills: requiredSkills,
           }
         : null,
-      tech_lead: invitation.tech_lead
-        ? {
-            id: invitation.tech_lead.id,
-            name: invitation.tech_lead.name,
-            email: invitation.tech_lead.email,
-          }
-        : null,
+      interviewer_email: invitation.interviewer_email,
+      interviewer_name: invitation.interviewer_name,
       evaluation: existingEval ? this.formatEvaluationResponse(existingEval) : null,
       expires_at: invitation.expires_at,
       completed_at: invitation.completed_at,

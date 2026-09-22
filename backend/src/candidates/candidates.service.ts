@@ -18,9 +18,11 @@ import { CandidateMatchingService } from './candidate-matching.service';
 import { InterviewEvaluation } from '../interview-evaluations/entities/interview-evaluation.entity';
 import { User } from '../users/entities/user.entity';
 import { UserRole } from '../users/enums/user-role.enum';
-import { TechLead } from '../tech-leads/entities/tech-lead.entity';
-import { TechLeadStatus } from '../tech-leads/enums/tech-lead-status.enum';
 import { InterviewInvitationsService } from '../interview-invitations/interview-invitations.service';
+import { GroqService } from '../ai-job/groq.service';
+import { DocumentParserService } from '../ai-job/document-parser.service';
+import * as fs from 'fs';
+import * as path from 'path';
 
 @Injectable()
 export class CandidatesService {
@@ -35,18 +37,41 @@ export class CandidatesService {
     private readonly evaluationRepository: Repository<InterviewEvaluation>,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
-    @InjectRepository(TechLead)
-    private readonly techLeadRepository: Repository<TechLead>,
     private readonly candidateMatchingService: CandidateMatchingService,
     private readonly interviewInvitationsService: InterviewInvitationsService,
+    private readonly groqService: GroqService,
+    private readonly documentParserService: DocumentParserService,
   ) {}
+
+  /**
+   * Evaluates whether a candidate's resume matches the Job Description.
+   * Defined as having an ATS match percentage >= 80% and recommendation !== 'POOR_MATCH'.
+   */
+  isResumeMatchingJd(candidate: Candidate): boolean {
+    const match = candidate.ai_match_percentage;
+    if (match === null || match === undefined || isNaN(Number(match))) {
+      return false;
+    }
+    if (Number(match) < 80) {
+      return false;
+    }
+    if (candidate.ai_screening_details) {
+      try {
+        const details = JSON.parse(candidate.ai_screening_details);
+        if (details.recommendation === 'POOR_MATCH') {
+          return false;
+        }
+      } catch {}
+    }
+    return true;
+  }
 
   /**
    * Create a new candidate for a job.
    * Enforces that the job exists and its status is OPEN.
    */
   async create(createCandidateDto: CreateCandidateDto): Promise<Candidate> {
-    const { name, email, phone, resume_url, job_id, tech_lead_id } = createCandidateDto;
+    const { name, email, phone, resume_url, job_id } = createCandidateDto;
 
     // 1. Verify that the job exists
     const job = await this.jobRepository.findOne({
@@ -62,73 +87,195 @@ export class CandidatesService {
       throw new BadRequestException('Candidates can only be added to open jobs.');
     }
 
-    // 3. Resolve Tech Lead (use provided or auto-select first active tech lead)
-    let techLead: TechLead | null = null;
-    if (tech_lead_id) {
-      techLead = await this.techLeadRepository.findOne({
-        where: { id: tech_lead_id },
-      });
-
-      if (!techLead) {
-        throw new NotFoundException('Selected Tech Lead was not found.');
-      }
-
-      if (techLead.status !== TechLeadStatus.ACTIVE) {
-        throw new BadRequestException('Selected Tech Lead is inactive.');
-      }
-    } else {
-      techLead = await this.techLeadRepository.findOne({
-        where: { status: TechLeadStatus.ACTIVE },
-        order: { id: 'ASC' },
-      });
-
-      if (!techLead) {
-        techLead = await this.techLeadRepository.findOne({
-          order: { id: 'ASC' },
-        });
-      }
+    if (!resume_url || !resume_url.trim()) {
+      throw new BadRequestException(
+        'Resume document or URL is required for candidate screening.',
+      );
     }
 
-    if (!techLead) {
-      throw new BadRequestException('No evaluator or tech lead available in the system.');
-    }
-
-    // 4. Create candidate with status APPLIED (skills default to empty string)
+    // 3. Create candidate with status APPLIED
     const candidate = this.candidateRepository.create({
       name: name.trim(),
       email: email.trim(),
       phone: phone.trim(),
-      skills: '',
-      resume_url: resume_url && resume_url.trim() ? resume_url.trim() : null,
+      skills: (createCandidateDto.skills || '').trim(),
+      resume_url: resume_url.trim(),
+      resume_text: createCandidateDto.resume_text?.trim() || null,
+      interviewer_email: createCandidateDto.interviewer_email?.trim() || null,
+      interview_date: createCandidateDto.interview_date?.trim() || null,
+      interview_time: createCandidateDto.interview_time?.trim() || null,
+      gmeet_link: createCandidateDto.gmeet_link?.trim() || null,
       status: CandidateStatus.APPLIED,
       job_id: job.id,
       job,
-      tech_lead_id: techLead.id,
-      tech_lead: techLead,
     });
 
     const savedCandidate = await this.candidateRepository.save(candidate);
     CandidatesService.invalidateCache();
 
-    // 5. Automatically send evaluation email to JD contact_email or tech lead
-    const evaluationRecipient = job.contact_email || techLead.email;
-    if (evaluationRecipient) {
-      this.interviewInvitationsService
-        .sendInterviewInvitation(savedCandidate.id, evaluationRecipient)
-        .then(() => {
-          this.logger.log(
-            `[Evaluation Dispatch] Auto-sent candidate evaluation link to ${evaluationRecipient} for candidate ${savedCandidate.name} (Job: ${job.title})`,
-          );
-        })
-        .catch((dispatchErr) => {
-          this.logger.warn(
-            `[Evaluation Dispatch] Notice: Could not auto-dispatch evaluation email to ${evaluationRecipient}: ${dispatchErr.message}`,
-          );
-        });
+    // 5. Stage 1: AI Resume Screening (NO automatic email dispatch!)
+    try {
+      await this.screenCandidateResume(savedCandidate.id);
+    } catch (screenErr: any) {
+      this.logger.warn(
+        `AI Resume screening notice for candidate ${savedCandidate.id}: ${screenErr.message}`,
+      );
     }
 
     // Return candidate with basic job & tech lead info
     return this.findOne(savedCandidate.id);
+  }
+
+  /**
+   * Stage 1: AI Resume Screening
+   * Compares candidate resume against the Job Description using Groq AI.
+   * Computes match percentage (0-100%), strengths, missing skills, and detailed summary.
+   */
+  async screenCandidateResume(candidateId: number): Promise<any> {
+    const candidate = await this.candidateRepository.findOne({
+      where: { id: candidateId },
+      relations: ['job'],
+    });
+
+    if (!candidate) {
+      throw new NotFoundException(`Candidate with ID ${candidateId} not found`);
+    }
+
+    if (!candidate.job) {
+      throw new BadRequestException('Candidate is not assigned to a valid job requisition');
+    }
+
+    // Extract resume text
+    let resumeContent = (candidate.resume_text || '').trim();
+
+    if (!resumeContent && candidate.resume_url) {
+      resumeContent = await this.extractResumeText(candidate.resume_url);
+      if (resumeContent) {
+        candidate.resume_text = resumeContent;
+      }
+    }
+
+    if (!resumeContent) {
+      resumeContent = `Candidate: ${candidate.name}\nSkills: ${candidate.skills || 'Software Engineer'}\nEmail: ${candidate.email}\nPhone: ${candidate.phone}`;
+    }
+
+    // Call GroqService to screen resume against Job
+    const screeningResult = await this.groqService.screenResumeAgainstJob(
+      {
+        title: candidate.job.title,
+        description: candidate.job.description,
+        required_skills: candidate.job.required_skills,
+        experience_required: candidate.job.experience_required,
+      },
+      resumeContent,
+    );
+
+    // Persist screening score and details
+    candidate.ai_match_percentage = screeningResult.match_percentage;
+    candidate.ai_screening_details = JSON.stringify(screeningResult);
+
+    // Sync extracted skills if candidate skills are empty
+    if (
+      (!candidate.skills || candidate.skills.trim().length === 0) &&
+      screeningResult.matched_skills?.length > 0
+    ) {
+      candidate.skills = screeningResult.matched_skills.join(', ');
+    }
+
+    await this.candidateRepository.save(candidate);
+    CandidatesService.invalidateCache();
+
+    return {
+      candidate_id: candidate.id,
+      candidate_name: candidate.name,
+      job_id: candidate.job.id,
+      job_title: candidate.job.title,
+      ...screeningResult,
+    };
+  }
+
+  /**
+   * Extracts text from resume URL, data URL, or local file.
+   */
+  private async extractResumeText(resumeUrl: string): Promise<string> {
+    try {
+      const url = resumeUrl.trim();
+
+      // Base64 Data URL
+      if (url.startsWith('data:')) {
+        const commaIdx = url.indexOf(',');
+        if (commaIdx !== -1) {
+          const mimeMatch = url.substring(0, commaIdx).match(/:(.*?);/);
+          const mime = mimeMatch ? mimeMatch[1] : 'application/pdf';
+          const buffer = Buffer.from(url.substring(commaIdx + 1), 'base64');
+          if (
+            mime.includes('pdf') ||
+            mime.includes('word') ||
+            mime.includes('officedocument')
+          ) {
+            const parsed = await this.documentParserService.parseFile({
+              originalname: 'resume.pdf',
+              mimetype: mime,
+              size: buffer.length,
+              buffer,
+            });
+            return parsed.text;
+          } else {
+            return buffer.toString('utf-8');
+          }
+        }
+      }
+
+      // HTTP / HTTPS URL
+      if (url.startsWith('http://') || url.startsWith('https://')) {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 6000);
+        try {
+          const res = await fetch(url, { signal: controller.signal });
+          clearTimeout(timeout);
+          if (res.ok) {
+            const buf = Buffer.from(await res.arrayBuffer());
+            const ext = path.extname(url).toLowerCase();
+            const mime =
+              ext === '.docx'
+                ? 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+                : 'application/pdf';
+            const parsed = await this.documentParserService.parseFile({
+              originalname: `resume${ext || '.pdf'}`,
+              mimetype: mime,
+              size: buf.length,
+              buffer: buf,
+            });
+            return parsed.text;
+          }
+        } catch (fetchErr: any) {
+          this.logger.warn(
+            `Could not fetch remote resume URL ${url}: ${fetchErr.message}`,
+          );
+        }
+      }
+
+      // Local File
+      if (fs.existsSync(url)) {
+        const buffer = fs.readFileSync(url);
+        const ext = path.extname(url).toLowerCase();
+        const mime =
+          ext === '.docx'
+            ? 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+            : 'application/pdf';
+        const parsed = await this.documentParserService.parseFile({
+          originalname: path.basename(url),
+          mimetype: mime,
+          size: buffer.length,
+          buffer,
+        });
+        return parsed.text;
+      }
+    } catch (err: any) {
+      this.logger.warn(`Failed to extract text from resume: ${err.message}`);
+    }
+
+    return '';
   }
 
 
@@ -162,7 +309,7 @@ export class CandidatesService {
    */
   async findAll(): Promise<Candidate[]> {
     return this.candidateRepository.find({
-      relations: ['job', 'tech_lead'],
+      relations: ['job'],
       select: {
         id: true,
         name: true,
@@ -172,19 +319,17 @@ export class CandidatesService {
         resume_url: true,
         status: true,
         job_id: true,
-        tech_lead_id: true,
+        interviewer_email: true,
+        interview_date: true,
+        interview_time: true,
+        gmeet_link: true,
+        ai_match_percentage: true,
         created_at: true,
         updated_at: true,
         job: {
           id: true,
           title: true,
           department: true,
-        },
-        tech_lead: {
-          id: true,
-          name: true,
-          email: true,
-          status: true,
         },
       },
       order: {
@@ -230,7 +375,7 @@ export class CandidatesService {
     }
 
     const candidates = await this.candidateRepository.find({
-      relations: ['job', 'tech_lead'],
+      relations: ['job'],
       order: {
         created_at: 'DESC',
       },
@@ -271,6 +416,13 @@ export class CandidatesService {
         }
       }
 
+      const finalMatchPercentage =
+        matchPercentage !== null && matchPercentage !== undefined
+          ? matchPercentage
+          : c.ai_match_percentage !== null && c.ai_match_percentage !== undefined
+          ? Math.round(Number(c.ai_match_percentage))
+          : null;
+
       return {
         id: c.id,
         name: c.name,
@@ -286,18 +438,15 @@ export class CandidatesService {
               title: c.job.title,
               department: c.job.department,
               required_skills: c.job.required_skills,
+              contact_email: c.job.contact_email ?? c.interviewer_email ?? null,
             }
           : null,
-        tech_lead_id: c.tech_lead_id,
-        tech_lead: c.tech_lead
-          ? {
-              id: c.tech_lead.id,
-              name: c.tech_lead.name,
-              email: c.tech_lead.email,
-              status: c.tech_lead.status,
-            }
-          : null,
-        match_percentage: matchPercentage,
+        match_percentage: finalMatchPercentage,
+        ai_match_percentage: c.ai_match_percentage,
+        interviewer_email: c.interviewer_email,
+        interview_date: c.interview_date,
+        interview_time: c.interview_time,
+        gmeet_link: c.gmeet_link,
         overall_score: overallScore,
         interview_score: overallScore,
         created_at: c.created_at,
@@ -317,7 +466,7 @@ export class CandidatesService {
   async findOne(id: number): Promise<Candidate> {
     const candidate = await this.candidateRepository.findOne({
       where: { id },
-      relations: ['job', 'tech_lead'],
+      relations: ['job'],
       select: {
         id: true,
         name: true,
@@ -325,9 +474,15 @@ export class CandidatesService {
         phone: true,
         skills: true,
         resume_url: true,
+        resume_text: true,
+        ai_match_percentage: true,
+        ai_screening_details: true,
+        interviewer_email: true,
+        interview_date: true,
+        interview_time: true,
+        gmeet_link: true,
         status: true,
         job_id: true,
-        tech_lead_id: true,
         created_at: true,
         updated_at: true,
         job: {
@@ -336,12 +491,7 @@ export class CandidatesService {
           department: true,
           description: true,
           required_skills: true,
-        },
-        tech_lead: {
-          id: true,
-          name: true,
-          email: true,
-          status: true,
+          contact_email: true,
         },
       },
     });
@@ -369,7 +519,7 @@ export class CandidatesService {
     // 2. Return candidates for this job
     return this.candidateRepository.find({
       where: { job_id: jobId },
-      relations: ['job', 'tech_lead'],
+      relations: ['job'],
       select: {
         id: true,
         name: true,
@@ -377,21 +527,19 @@ export class CandidatesService {
         phone: true,
         skills: true,
         resume_url: true,
+        interviewer_email: true,
+        interview_date: true,
+        interview_time: true,
+        gmeet_link: true,
+        ai_match_percentage: true,
         status: true,
         job_id: true,
-        tech_lead_id: true,
         created_at: true,
         updated_at: true,
         job: {
           id: true,
           title: true,
           department: true,
-        },
-        tech_lead: {
-          id: true,
-          name: true,
-          email: true,
-          status: true,
         },
       },
       order: {
@@ -415,33 +563,62 @@ export class CandidatesService {
     const existingCandidate = await this.findOne(id);
 
     // 2. Merge allowed fields (status is controlled strictly via workflow)
-    const { name, email, phone, skills, resume_url, tech_lead_id } = updateCandidateDto;
+    const {
+      name,
+      email,
+      phone,
+      skills,
+      resume_url,
+      resume_text,
+      ai_match_percentage,
+      ai_screening_details,
+      interviewer_email,
+      interview_date,
+      interview_time,
+      gmeet_link,
+    } = updateCandidateDto;
+
+    let resumeChanged = false;
 
     if (name !== undefined) existingCandidate.name = name;
     if (email !== undefined) existingCandidate.email = email;
     if (phone !== undefined) existingCandidate.phone = phone;
     if (skills !== undefined) existingCandidate.skills = skills;
-    if (resume_url !== undefined) existingCandidate.resume_url = resume_url;
-
-    if (tech_lead_id !== undefined) {
-      const techLead = await this.techLeadRepository.findOne({
-        where: { id: tech_lead_id },
-      });
-
-      if (!techLead) {
-        throw new NotFoundException('Selected Tech Lead was not found.');
-      }
-
-      if (techLead.status !== TechLeadStatus.ACTIVE) {
-        throw new BadRequestException('Selected Tech Lead is inactive.');
-      }
-
-      existingCandidate.tech_lead_id = techLead.id;
-      existingCandidate.tech_lead = techLead;
+    if (resume_url !== undefined && resume_url !== existingCandidate.resume_url) {
+      existingCandidate.resume_url = resume_url;
+      resumeChanged = true;
     }
+    if (resume_text !== undefined && resume_text !== existingCandidate.resume_text) {
+      existingCandidate.resume_text = resume_text;
+      resumeChanged = true;
+    }
+    if (ai_match_percentage !== undefined) existingCandidate.ai_match_percentage = ai_match_percentage;
+    if (ai_screening_details !== undefined) existingCandidate.ai_screening_details = ai_screening_details;
+    if (interviewer_email !== undefined) {
+      // RULE: Only allowed to manually set interviewer email if resume matches the JD!
+      if (interviewer_email && interviewer_email.trim().length > 0) {
+        if (!this.isResumeMatchingJd(existingCandidate)) {
+          throw new BadRequestException(
+            `Candidate resume does not match the job requirements (Match: ${existingCandidate.ai_match_percentage ?? 0}%). Only matching candidate profiles can move to the technical interview stage and be assigned an interviewer.`,
+          );
+        }
+      }
+      existingCandidate.interviewer_email = interviewer_email ? interviewer_email.trim() : null;
+    }
+    if (interview_date !== undefined) existingCandidate.interview_date = interview_date;
+    if (interview_time !== undefined) existingCandidate.interview_time = interview_time;
+    if (gmeet_link !== undefined) existingCandidate.gmeet_link = gmeet_link;
 
     await this.candidateRepository.save(existingCandidate);
     CandidatesService.invalidateCache();
+
+    if (resumeChanged) {
+      try {
+        await this.screenCandidateResume(id);
+      } catch (err: any) {
+        this.logger.warn(`Could not re-screen candidate ${id}: ${err.message}`);
+      }
+    }
 
     return this.findOne(id);
   }
@@ -502,7 +679,7 @@ export class CandidatesService {
 
     const evaluation = await this.evaluationRepository.findOne({
       where: { candidate_id: id },
-      relations: ['hr', 'tech_lead', 'skills'],
+      relations: ['hr', 'skills'],
     });
 
     let totalScore: number | null = null;
@@ -546,29 +723,55 @@ export class CandidatesService {
                 email: evaluation.hr.email,
               }
             : null,
-          tech_lead: evaluation.tech_lead
-            ? {
-                id: evaluation.tech_lead.id,
-                name: evaluation.tech_lead.name,
-                email: evaluation.tech_lead.email,
-              }
-            : null,
+          interviewer_email:
+            evaluation.interviewer_email || candidate.interviewer_email || null,
           created_at: evaluation.created_at,
           updated_at: evaluation.updated_at,
         }
       : null;
+
+    let parsedAiDetails: any = null;
+    if (candidate.ai_screening_details) {
+      try {
+        parsedAiDetails =
+          typeof candidate.ai_screening_details === 'string'
+            ? JSON.parse(candidate.ai_screening_details)
+            : candidate.ai_screening_details;
+      } catch (_) {}
+    }
+
+    const effectiveMatchPct =
+      matchPercentage !== null && matchPercentage !== undefined
+        ? matchPercentage
+        : candidate.ai_match_percentage !== null &&
+          candidate.ai_match_percentage !== undefined
+        ? Math.round(Number(candidate.ai_match_percentage))
+        : parsedAiDetails?.match_percentage
+        ? Math.round(Number(parsedAiDetails.match_percentage))
+        : 0;
 
     const matchingPayload = {
       requiredSkills,
       totalScore,
       maximumScore,
       overallScore,
-      matchPercentage,
-      // Backward compatibility aliases
+      matchPercentage: effectiveMatchPct,
+      match_percentage: effectiveMatchPct,
+      // Skills & AI Analysis
       required_skills: requiredSkills,
-      matched_skills: [],
-      missing_skills: [],
-      match_percentage: matchPercentage ?? 0,
+      matched_skills: parsedAiDetails?.matched_skills || [],
+      missing_skills: parsedAiDetails?.missing_skills || [],
+      strengths: parsedAiDetails?.strengths || [],
+      recommendation:
+        parsedAiDetails?.recommendation ||
+        (effectiveMatchPct >= 75
+          ? 'STRONG_MATCH'
+          : effectiveMatchPct >= 50
+          ? 'MODERATE_MATCH'
+          : 'POOR_MATCH'),
+      summary:
+        parsedAiDetails?.summary ||
+        `Profile match evaluated at ${effectiveMatchPct}%.`,
     };
 
     return {
@@ -579,9 +782,14 @@ export class CandidatesService {
         phone: candidate.phone,
         skills: candidate.skills,
         resume_url: candidate.resume_url,
+        resume_text: candidate.resume_text,
+        ai_match_percentage: candidate.ai_match_percentage,
+        ai_screening_details: parsedAiDetails,
+        interviewer_email: candidate.interviewer_email,
+        interview_date: candidate.interview_date,
+        interview_time: candidate.interview_time,
+        gmeet_link: candidate.gmeet_link,
         status: candidate.status,
-        tech_lead_id: candidate.tech_lead_id,
-        tech_lead: candidate.tech_lead,
       },
       job: {
         id: candidate.job?.id ?? candidate.job_id,
@@ -589,6 +797,24 @@ export class CandidatesService {
         department: candidate.job?.department ?? '',
         description: candidate.job?.description ?? '',
         required_skills: candidate.job?.required_skills ?? '',
+        contact_email:
+          candidate.job?.contact_email ?? candidate.interviewer_email ?? null,
+      },
+      ai_screening: {
+        match_percentage: effectiveMatchPct,
+        matched_skills: parsedAiDetails?.matched_skills || [],
+        missing_skills: parsedAiDetails?.missing_skills || [],
+        strengths: parsedAiDetails?.strengths || [],
+        recommendation:
+          parsedAiDetails?.recommendation ||
+          (effectiveMatchPct >= 75
+            ? 'STRONG_MATCH'
+            : effectiveMatchPct >= 50
+            ? 'MODERATE_MATCH'
+            : 'POOR_MATCH'),
+        summary:
+          parsedAiDetails?.summary ||
+          `Candidate matches ${effectiveMatchPct}% of the job requirements.`,
       },
       evaluation: evaluationPayload,
       matching: matchingPayload,

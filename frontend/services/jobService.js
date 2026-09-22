@@ -71,6 +71,20 @@ const jobService = {
   },
 
   /**
+   * Redesigns and polishes a Job Description using AI.
+   * @param {Object} payload - { title, description, department }
+   * @param {number|string} hrId - Optional HR User ID
+   * @returns {Promise<Object>} { success: true, data: { enhanced_description } }
+   */
+  async enhanceJobDescription(payload, hrId) {
+    const queryParams = hrId ? { hr_id: hrId } : {};
+    const response = await api.post('/ai/jobs/enhance-description', payload, {
+      params: queryParams,
+    });
+    return response.data;
+  },
+
+  /**
    * Update an existing job
    * @param {number|string} id - Job ID
    * @param {Object} updateData - Partial job fields

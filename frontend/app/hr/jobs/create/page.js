@@ -4,7 +4,6 @@ import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
-  Sparkles,
   FileText,
   Upload,
   ArrowLeft,
@@ -24,6 +23,7 @@ import {
 import Button from '@/components/ui/Button';
 import Badge from '@/components/ui/Badge';
 import Toast from '@/components/ui/Toast';
+import NextStepModal from '@/components/ui/NextStepModal';
 import jobService from '@/services/jobService';
 import authService from '@/services/authService';
 
@@ -39,19 +39,17 @@ export default function CreateJobPage() {
   // Mode 1 input sub-tab: 'file' | 'paste'
   const [existingTab, setExistingTab] = useState('file');
 
-  // Option 2: Generate with AI Form state
+  // Option 2: Generate with AI Form state (no interviewer email here)
   const [generateForm, setGenerateForm] = useState({
     job_title: '',
     experience_years: '',
     department: 'Engineering',
     location: '',
-    contact_email: '',
   });
 
   // Option A: Existing JD Form state
   const [jdText, setJdText] = useState('');
   const [selectedFile, setSelectedFile] = useState(null);
-  const [manualEmailWithJd, setManualEmailWithJd] = useState('');
 
   // AI Loading & Processing state
   const [isProcessing, setIsProcessing] = useState(false);
@@ -59,6 +57,12 @@ export default function CreateJobPage() {
 
   // AI Generated / Extracted Draft Preview state (null when in input mode)
   const [previewJob, setPreviewJob] = useState(null);
+
+  // Description AI Enhancement state
+  const [isEnhancingDescription, setIsEnhancingDescription] = useState(false);
+
+  // Next-Stage Guided Popup state
+  const [createdJobForNextStep, setCreatedJobForNextStep] = useState(null);
 
   // New skill input in preview editor
   const [newSkillInput, setNewSkillInput] = useState('');
@@ -110,13 +114,7 @@ export default function CreateJobPage() {
       return;
     }
 
-    const maxSize = 5 * 1024 * 1024; // 5MB
-    if (file.size > maxSize) {
-      setErrorBanner('The selected file is too large. Maximum file size allowed is 5MB.');
-      e.target.value = '';
-      return;
-    }
-
+    // No restrictive file size boundary
     setSelectedFile(file);
   };
 
@@ -149,14 +147,27 @@ export default function CreateJobPage() {
       .filter((q) => typeof q === 'string' && q.trim())
       .map((q) => q.trim());
 
+    // Ensure description is formatted strictly as a single continuous paragraph without added elements
+    let cleanDescription = (raw.description || '').trim();
+    if (cleanDescription.includes('###') || cleanDescription.includes('\n-') || cleanDescription.includes('\n*')) {
+      cleanDescription = cleanDescription
+        .replace(/###\s*[^\n]+/g, '')
+        .replace(/\*\*[^*]+\*\*:?/g, '')
+        .replace(/^[\s*-•\d.]+/gm, '')
+        .split(/\n+/)
+        .map((l) => l.trim())
+        .filter((l) => l.length > 0)
+        .join(' ')
+        .trim();
+    }
+
     return {
       title: raw.title || '',
       department: raw.department || 'Engineering',
       seniority_level: raw.seniority_level || 'Mid-Level',
       experience_required: raw.experience_required || '',
       location: raw.location || '',
-      contact_email: raw.contact_email || manualEmailWithJd || generateForm.contact_email || '',
-      description: raw.description || '',
+      description: cleanDescription,
       required_skills: uniqueSkills,
       responsibilities: cleanResponsibilities.length > 0 ? cleanResponsibilities : ['Execute core duties and collaborate with the engineering team.'],
       qualifications: cleanQualifications.length > 0 ? cleanQualifications : ["Bachelor's degree in Computer Science or relevant practical experience."],
@@ -403,22 +414,74 @@ export default function CreateJobPage() {
         required_skills: validSkills, // jobService will serialize to string for existing backend DTO
         experience_required: previewJob.experience_required.trim(),
         location: previewJob.location ? previewJob.location.trim() : 'Remote',
-        contact_email: previewJob.contact_email ? previewJob.contact_email.trim() : undefined,
         created_by: currentUser?.id,
       };
 
-      await jobService.createJob(payload);
+      const created = await jobService.createJob(payload);
 
-      setToast({ message: 'Job created successfully! Redirecting...', type: 'success' });
-
-      setTimeout(() => {
-        router.push('/hr/jobs');
-      }, 1000);
+      setToast({ message: 'Job created successfully!', type: 'success' });
+      setIsCreating(false);
+      setCreatedJobForNextStep(created || { ...payload, id: 'latest' });
     } catch (err) {
       console.error('Failed to create approved job:', err);
       const msg = err.response?.data?.message;
       setErrorBanner(Array.isArray(msg) ? msg.join(', ') : msg || 'Unable to create job. Please review the fields.');
       setIsCreating(false);
+    }
+  };
+
+  // ACTION: AI Redesign / Auto-Summarize Description
+  const handleRedesignDescription = async () => {
+    if (!previewJob) return;
+    const desc = (previewJob.description || '').trim();
+    const title = (previewJob.title || '').trim();
+
+    if (!desc && !title) {
+      setErrorBanner('Please enter some notes or draft content in the description to redesign.');
+      return;
+    }
+
+    setIsEnhancingDescription(true);
+    setErrorBanner(null);
+
+    try {
+      const res = await jobService.enhanceJobDescription(
+        {
+          title,
+          description: desc || title,
+          department: previewJob.department,
+        },
+        currentUser?.id,
+      );
+
+      if (res?.data?.enhanced_description) {
+        let enhancedText = res.data.enhanced_description.trim();
+        // Clean markdown tokens without deleting substantive text lines
+        enhancedText = enhancedText
+          .replace(/#{1,6}\s*/g, '')
+          .replace(/\*\*/g, '')
+          .split(/\n+/)
+          .map((l) => l.trim())
+          .filter((l) => l.length > 0)
+          .join(' ')
+          .trim();
+
+        if (enhancedText.length >= 20) {
+          setPreviewJob((prev) => ({
+            ...prev,
+            description: enhancedText,
+          }));
+          setToast({ message: '✨ Description enhanced and regenerated successfully!', type: 'success' });
+        } else if (desc.length > 0) {
+          // If response is unusually short, keep user's existing draft intact!
+          setToast({ message: '✨ Draft preserved without loss.', type: 'info' });
+        }
+      }
+    } catch (err) {
+      console.error('Failed to enhance description with AI:', err);
+      setErrorBanner('Unable to redesign description with AI. Please try again.');
+    } finally {
+      setIsEnhancingDescription(false);
     }
   };
 
@@ -490,30 +553,30 @@ export default function CreateJobPage() {
                 disabled={isProcessing}
                 className={`text-left p-5 rounded-2xl border transition-all relative select-none cursor-pointer ${
                   mode === 'with_jd'
-                    ? 'border-indigo-600 bg-indigo-50/40 ring-2 ring-indigo-500/20 shadow-sm'
-                    : 'border-zinc-200/90 bg-white hover:border-zinc-300 hover:bg-zinc-50/60 shadow-xs'
+                    ? 'border-slate-900 bg-slate-50 ring-1 ring-slate-900/10 shadow-xs'
+                    : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/60 shadow-xs'
                 }`}
               >
                 <div className="flex items-start gap-3.5">
                   <div
                     className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors ${
                       mode === 'with_jd'
-                        ? 'bg-indigo-600 text-white shadow-xs'
-                        : 'bg-zinc-100 text-zinc-600'
+                        ? 'bg-slate-900 text-white shadow-xs'
+                        : 'bg-slate-100 text-slate-600'
                     }`}
                   >
                     <FileText className="w-5 h-5" />
                   </div>
                   <div className="flex-1">
                     <div className="flex items-center justify-between">
-                      <span className="font-bold text-zinc-950 text-base">
+                      <span className="font-bold text-slate-900 text-base">
                         Option 1: With JD
                       </span>
                       {mode === 'with_jd' && (
-                        <CheckCircle2 className="w-4 h-4 text-indigo-600" />
+                        <CheckCircle2 className="w-4 h-4 text-slate-900" />
                       )}
                     </div>
-                    <p className="text-xs text-zinc-500 mt-1 leading-relaxed">
+                    <p className="text-xs text-slate-500 mt-1 leading-relaxed">
                       Upload a PDF/DOCX or paste an existing JD. AI will parse, extract, and structure all competencies.
                     </p>
                   </div>
@@ -530,30 +593,30 @@ export default function CreateJobPage() {
                 disabled={isProcessing}
                 className={`text-left p-5 rounded-2xl border transition-all relative select-none cursor-pointer ${
                   mode === 'without_jd'
-                    ? 'border-indigo-600 bg-indigo-50/40 ring-2 ring-indigo-500/20 shadow-sm'
-                    : 'border-zinc-200/90 bg-white hover:border-zinc-300 hover:bg-zinc-50/60 shadow-xs'
+                    ? 'border-slate-900 bg-slate-50 ring-1 ring-slate-900/10 shadow-xs'
+                    : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/60 shadow-xs'
                 }`}
               >
                 <div className="flex items-start gap-3.5">
                   <div
                     className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors ${
                       mode === 'without_jd'
-                        ? 'bg-indigo-600 text-white shadow-xs'
-                        : 'bg-zinc-100 text-zinc-600'
+                        ? 'bg-slate-900 text-white shadow-xs'
+                        : 'bg-slate-100 text-slate-600'
                     }`}
                   >
-                    <Sparkles className="w-5 h-5" />
+                    <Briefcase className="w-5 h-5" />
                   </div>
                   <div className="flex-1">
                     <div className="flex items-center justify-between">
-                      <span className="font-bold text-zinc-950 text-base">
+                      <span className="font-bold text-slate-900 text-base">
                         Option 2: Without JD
                       </span>
                       {mode === 'without_jd' && (
-                        <CheckCircle2 className="w-4 h-4 text-indigo-600" />
+                        <CheckCircle2 className="w-4 h-4 text-slate-900" />
                       )}
                     </div>
-                    <p className="text-xs text-zinc-500 mt-1 leading-relaxed">
+                    <p className="text-xs text-slate-500 mt-1 leading-relaxed">
                       Provide basic role details. AI will generate a complete, production-grade Job Description from scratch.
                     </p>
                   </div>
@@ -562,21 +625,16 @@ export default function CreateJobPage() {
             </div>
           </div>
 
-          {/* AI Processing Card */}
+          {/* AI Processing Card - Simple spinner, no icons */}
           {isProcessing && (
-            <div className="bg-gradient-to-r from-indigo-50 via-purple-50 to-indigo-50 border border-indigo-200/80 rounded-2xl p-8 text-center shadow-xs animate-pulse">
-              <div className="w-12 h-12 rounded-2xl bg-indigo-600 text-white flex items-center justify-center mx-auto mb-4 shadow-sm animate-spin">
-                <Sparkles className="w-6 h-6" />
-              </div>
-              <h3 className="text-lg font-bold text-zinc-950 tracking-tight">
-                AI is Processing Your Job Specification...
+            <div className="bg-white border border-slate-200 rounded-2xl p-10 text-center shadow-xs">
+              <div className="w-8 h-8 border-2 border-slate-300 border-t-slate-800 rounded-full animate-spin mx-auto mb-4" />
+              <h3 className="text-base font-bold text-slate-900 tracking-tight">
+                Processing Job Specification
               </h3>
-              <p className="text-sm text-zinc-600 max-w-lg mx-auto mt-2 leading-relaxed">
+              <p className="text-xs text-slate-500 max-w-md mx-auto mt-1 leading-relaxed">
                 {processingMessage}
               </p>
-              <div className="mt-5 w-48 h-1.5 bg-indigo-200 rounded-full mx-auto overflow-hidden">
-                <div className="w-full h-full bg-indigo-600 rounded-full animate-pulse" />
-              </div>
             </div>
           )}
 
@@ -709,30 +767,6 @@ export default function CreateJobPage() {
                   </div>
                 )}
 
-                {/* Manual or Auto-detected Evaluator Email */}
-                <div className="pt-2 border-t border-zinc-100/90">
-                  <label className="block text-xs font-bold uppercase tracking-wider text-zinc-700 mb-2">
-                    Evaluator / Contact Email <span className="text-zinc-400 font-normal">(Auto-detected from JD or enter manually)</span>
-                  </label>
-                  <div className="relative">
-                    <input
-                      type="email"
-                      placeholder="e.g. techlead@company.com or reviewer@acmecorp.com"
-                      value={manualEmailWithJd}
-                      onChange={(e) => setManualEmailWithJd(e.target.value)}
-                      className="w-full px-4 py-2.5 bg-zinc-50 border border-zinc-200/90 rounded-xl text-sm text-zinc-950 placeholder-zinc-400 focus:bg-white focus:border-indigo-600 focus:ring-2 focus:ring-indigo-500/15 transition-all outline-none"
-                    />
-                    {manualEmailWithJd && (
-                      <span className="absolute right-3 top-2.5 text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                        Email Captured
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-xs text-zinc-400 mt-1">
-                    When candidates are added to this job, the evaluation form URL will be automatically sent to this email address.
-                  </p>
-                </div>
-
                 <div className="flex items-center justify-end pt-4 border-t border-zinc-100">
                   <Button
                     type="submit"
@@ -740,9 +774,9 @@ export default function CreateJobPage() {
                     size="lg"
                     loading={isProcessing}
                     disabled={existingTab === 'file' ? !selectedFile : jdText.trim().length < 20}
-                    className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 border-indigo-700 text-white"
+                    className="flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl"
                   >
-                    <Sparkles className="w-4 h-4" />
+                    <FileText className="w-4 h-4" />
                     <span>Extract & Structure JD</span>
                   </Button>
                 </div>
@@ -752,15 +786,15 @@ export default function CreateJobPage() {
 
           {/* OPTION 2: Without JD Form */}
           {!isProcessing && mode === 'without_jd' && (
-            <div className="bg-white border border-zinc-200 rounded-3xl p-6 sm:p-8 shadow-xs">
-              <div className="flex items-center gap-2 pb-4 border-b border-zinc-100 mb-6">
-                <Sparkles className="w-5 h-5 text-indigo-600 flex-shrink-0" />
+            <div className="bg-white border border-slate-200 rounded-2xl p-6 sm:p-8 shadow-xs">
+              <div className="flex items-center gap-2 pb-4 border-b border-slate-100 mb-6">
+                <Briefcase className="w-5 h-5 text-slate-900 flex-shrink-0" />
                 <div>
-                  <h2 className="text-lg font-bold text-zinc-950 tracking-tight">
-                    Option 2: Without JD — AI Generator
+                  <h2 className="text-lg font-bold text-slate-900 tracking-tight">
+                    Option 2: Without JD — Role Parameters
                   </h2>
-                  <p className="text-xs text-zinc-500">
-                    Provide role parameters and AI will compose responsibilities, qualifications, and core technical competencies.
+                  <p className="text-xs text-slate-500">
+                    Provide role parameters to compose responsibilities, qualifications, and core technical competencies.
                   </p>
                 </div>
               </div>
@@ -775,38 +809,27 @@ export default function CreateJobPage() {
                     <input
                       type="text"
                       required
-                      placeholder="e.g. DevOps Engineer, Senior Frontend Developer, QA Lead"
+                      placeholder="e.g. Senior Full Stack Engineer"
                       value={generateForm.job_title}
                       onChange={(e) =>
-                        setGenerateForm((prev) => ({
-                          ...prev,
-                          job_title: e.target.value,
-                        }))
+                        setGenerateForm((prev) => ({ ...prev, job_title: e.target.value }))
                       }
-                      className="w-full px-4 py-2.5 bg-zinc-50 border border-zinc-200/90 rounded-xl text-sm text-zinc-950 placeholder-zinc-400 focus:bg-white focus:border-indigo-600 focus:ring-2 focus:ring-indigo-500/15 transition-all outline-none"
+                      className="w-full px-4 py-3 rounded-xl border border-zinc-200 bg-white text-zinc-950 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-900 transition-all"
                     />
                   </div>
 
-                  {/* Years of Experience */}
+                  {/* Experience in Years */}
                   <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <label className="block text-xs font-bold uppercase tracking-wider text-zinc-700">
-                        Years of Experience <span className="text-rose-500">*</span>
-                      </label>
-                      {seniorityHint && (
-                        <span
-                          className={`text-xs px-2 py-0.5 rounded-md font-semibold border ${seniorityHint.color}`}
-                        >
-                          {seniorityHint.label}
-                        </span>
-                      )}
-                    </div>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-zinc-700 mb-2">
+                      Experience Required (Years) <span className="text-rose-500">*</span>
+                    </label>
                     <input
                       type="number"
+                      min="0"
+                      max="50"
+                      step="1"
                       required
-                      min={0}
-                      max={50}
-                      placeholder="e.g. 4 (0 for Fresher)"
+                      placeholder="e.g. 4"
                       value={generateForm.experience_years}
                       onChange={(e) =>
                         setGenerateForm((prev) => ({
@@ -858,28 +881,6 @@ export default function CreateJobPage() {
                       className="w-full px-4 py-2.5 bg-zinc-50 border border-zinc-200/90 rounded-xl text-sm text-zinc-950 placeholder-zinc-400 focus:bg-white focus:border-indigo-600 focus:ring-2 focus:ring-indigo-500/15 transition-all outline-none"
                     />
                   </div>
-
-                  {/* Evaluator / Reviewer Email */}
-                  <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-zinc-700 mb-2">
-                      Evaluator / Reviewer Email <span className="text-zinc-400 font-normal">(Optional)</span>
-                    </label>
-                    <input
-                      type="email"
-                      placeholder="e.g. reviewer@company.com"
-                      value={generateForm.contact_email}
-                      onChange={(e) =>
-                        setGenerateForm((prev) => ({
-                          ...prev,
-                          contact_email: e.target.value,
-                        }))
-                      }
-                      className="w-full px-4 py-2.5 bg-zinc-50 border border-zinc-200/90 rounded-xl text-sm text-zinc-950 placeholder-zinc-400 focus:bg-white focus:border-indigo-600 focus:ring-2 focus:ring-indigo-500/15 transition-all outline-none"
-                    />
-                    <p className="text-[11px] text-zinc-400 mt-1">
-                      Candidate evaluation forms will be dispatched here.
-                    </p>
-                  </div>
                 </div>
 
                 <div className="flex items-center justify-end pt-4 border-t border-zinc-100">
@@ -888,9 +889,8 @@ export default function CreateJobPage() {
                     variant="primary"
                     size="lg"
                     loading={isProcessing}
-                    className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 border-indigo-700 text-white"
+                    className="flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs shadow-sm"
                   >
-                    <Sparkles className="w-4 h-4" />
                     <span>Generate Job Description</span>
                   </Button>
                 </div>
@@ -904,12 +904,11 @@ export default function CreateJobPage() {
       {previewJob && (
         <div className="space-y-8 animate-slide-up">
           {/* Preview Banner */}
-          <div className="bg-gradient-to-r from-indigo-900 to-zinc-900 text-white rounded-3xl p-6 sm:p-8 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="bg-slate-900 text-white rounded-2xl p-6 sm:p-8 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <div className="flex items-center gap-2 mb-2">
-                <Sparkles className="w-5 h-5 text-indigo-300" />
-                <span className="text-xs font-bold uppercase tracking-wider text-indigo-200">
-                  AutoJD Studio Draft Preview
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-300">
+                  AutoJD Draft Preview
                 </span>
               </div>
               <h2 className="text-xl sm:text-2xl font-black tracking-tight">
@@ -1023,42 +1022,33 @@ export default function CreateJobPage() {
                   className="w-full px-4 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl text-sm text-zinc-950 focus:bg-white focus:border-indigo-600 focus:ring-2 focus:ring-indigo-500/15 outline-none"
                 />
               </div>
-
-              {/* Evaluator / Contact Email */}
-              <div className="sm:col-span-2 lg:col-span-3 p-4 rounded-2xl bg-blue-50/70 border border-blue-200/90 shadow-xs">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
-                  <label className="block text-xs font-bold uppercase tracking-wider text-blue-900">
-                    Evaluator / Contact Email
-                  </label>
-                  <span className="self-start sm:self-auto text-[10px] font-bold text-blue-700 bg-white px-2.5 py-0.5 rounded-full border border-blue-200 shadow-xs">
-                    Candidate Evaluation Recipient
-                  </span>
-                </div>
-                <input
-                  type="email"
-                  placeholder="e.g. interviewer@company.com or techlead@acmecorp.com"
-                  value={previewJob.contact_email || ''}
-                  onChange={(e) =>
-                    setPreviewJob((prev) => ({
-                      ...prev,
-                      contact_email: e.target.value,
-                    }))
-                  }
-                  className="w-full px-4 py-2 bg-white border border-blue-300 rounded-xl text-sm font-semibold text-zinc-950 focus:border-blue-600 focus:ring-2 focus:ring-blue-500/20 outline-none"
-                />
-                <p className="text-xs text-blue-800/80 mt-1.5 leading-relaxed">
-                  Whenever a candidate is added for this job, the candidate evaluation dossier and direct evaluation form link will be automatically dispatched to this email address.
-                </p>
-              </div>
             </div>
 
-            {/* Description Textarea */}
+            {/* Description Textarea with AI Auto-Summarizer / Redesign */}
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-zinc-700 mb-2">
-                Job Description Overview <span className="text-rose-500">*</span>
-              </label>
+              <div className="flex items-center justify-between gap-2 mb-2">
+                <label className="block text-xs font-bold uppercase tracking-wider text-zinc-700">
+                  Job Description Overview <span className="text-rose-500">*</span>
+                </label>
+                <button
+                  type="button"
+                  onClick={handleRedesignDescription}
+                  disabled={isEnhancingDescription}
+                  title="Format as a single cohesive paragraph"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-slate-800 border border-slate-200 hover:bg-slate-200 transition-all shadow-xs"
+                >
+                  {isEnhancingDescription ? (
+                    <>
+                      <div className="w-3 h-3 border-2 border-slate-400 border-t-slate-800 rounded-full animate-spin" />
+                      <span>Regenerating...</span>
+                    </>
+                  ) : (
+                    <span>Enhance Description</span>
+                  )}
+                </button>
+              </div>
               <textarea
-                rows={5}
+                rows={6}
                 value={previewJob.description}
                 onChange={(e) =>
                   setPreviewJob((prev) => ({
@@ -1066,8 +1056,12 @@ export default function CreateJobPage() {
                     description: e.target.value,
                   }))
                 }
-                className="w-full px-4 py-3 bg-zinc-50 border border-zinc-200 rounded-2xl text-sm text-zinc-950 focus:bg-white focus:border-indigo-600 focus:ring-2 focus:ring-indigo-500/15 outline-none leading-relaxed"
+                placeholder="Type or paste draft notes, requirements, or bullet points here..."
+                className="w-full px-4 py-3 bg-zinc-50 border border-zinc-200 rounded-2xl text-sm text-zinc-950 focus:bg-white focus:border-indigo-600 focus:ring-2 focus:ring-indigo-500/15 outline-none leading-relaxed font-sans"
               />
+              <p className="text-[11px] text-zinc-400 mt-1">
+                Tip: Add or paste draft notes above and click &quot;AI Redesign Description&quot; to transform them into a structured, executive-ready job specification.
+              </p>
             </div>
 
             {/* Required Skills Tag/Chip Editor */}
@@ -1254,6 +1248,53 @@ export default function CreateJobPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Guided Next-Stage Modal */}
+      {createdJobForNextStep && (
+        <NextStepModal
+          isOpen={!!createdJobForNextStep}
+          onClose={() => router.push('/hr/jobs')}
+          title="Job Requisition Created!"
+          subtitle="Your new job requisition is open and ready for candidate applications."
+          badgeText="Job Created"
+          badgeColor="bg-indigo-50 text-indigo-700 border-indigo-200"
+          itemSummary={{
+            label: 'Requisition Details',
+            value: createdJobForNextStep.title,
+            tag: createdJobForNextStep.department,
+            subtext: `Location: ${createdJobForNextStep.location || 'Remote'} | Experience: ${createdJobForNextStep.experience_required}`,
+          }}
+          nextStageTitle="Recommended Next Stage: Add Candidates"
+          nextStageDescription="Upload candidate resumes for this job. AI will automatically compare resumes against the JD requirements and compute match percentages."
+          primaryAction={{
+            label: 'Add Candidates for this Job',
+            icon: Briefcase,
+            onClick: () =>
+              router.push(
+                `/hr/candidates?add=true&jobId=${createdJobForNextStep.id}`,
+              ),
+          }}
+          secondaryAction={{
+            label: 'View in Jobs Directory',
+            onClick: () => router.push('/hr/jobs'),
+          }}
+          tertiaryAction={{
+            label: 'Create Another Requisition',
+            onClick: () => {
+              setCreatedJobForNextStep(null);
+              setPreviewJob(null);
+              setGenerateForm({
+                job_title: '',
+                experience_years: '',
+                department: 'Engineering',
+                location: '',
+              });
+              setJdText('');
+              setSelectedFile(null);
+            },
+          }}
+        />
       )}
     </div>
   );

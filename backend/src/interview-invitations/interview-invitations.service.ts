@@ -8,19 +8,19 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
 import * as crypto from 'crypto';
+import * as path from 'path';
+import * as fs from 'fs';
 import { InterviewInvitation } from './entities/interview-invitation.entity';
 import { InvitationStatus } from './enums/invitation-status.enum';
 import { CreateInterviewInvitationDto } from './dto/create-interview-invitation.dto';
 import { Candidate } from '../candidates/entities/candidate.entity';
-import { TechLeadStatus } from '../tech-leads/enums/tech-lead-status.enum';
-
+import { CandidateStatus } from '../candidates/enums/candidate-status.enum';
 import { InterviewEvaluation } from '../interview-evaluations/entities/interview-evaluation.entity';
+import { Job } from '../jobs/entities/job.entity';
 import { EmailService } from '../email/email.service';
-import { PdfGeneratorService } from '../email/pdf-generator.service';
 import { EmailAttachment } from '../email/gmail.service';
+import { PdfGeneratorService } from '../email/pdf-generator.service';
 import { GroqService } from '../ai-job/groq.service';
-import * as fs from 'fs';
-import * as path from 'path';
 
 @Injectable()
 export class InterviewInvitationsService {
@@ -33,11 +33,35 @@ export class InterviewInvitationsService {
     private readonly candidateRepository: Repository<Candidate>,
     @InjectRepository(InterviewEvaluation)
     private readonly evaluationRepository: Repository<InterviewEvaluation>,
+    @InjectRepository(Job)
+    private readonly jobRepository: Repository<Job>,
     private readonly configService: ConfigService,
     private readonly emailService: EmailService,
     private readonly pdfGeneratorService: PdfGeneratorService,
     private readonly groqService: GroqService,
   ) {}
+
+  /**
+   * Evaluates whether candidate resume matches the Job Description.
+   */
+  private isResumeMatchingJd(candidate: Candidate): boolean {
+    const match = candidate.ai_match_percentage;
+    if (match === null || match === undefined || isNaN(Number(match))) {
+      return false;
+    }
+    if (Number(match) < 80) {
+      return false;
+    }
+    if (candidate.ai_screening_details) {
+      try {
+        const details = JSON.parse(candidate.ai_screening_details);
+        if (details.recommendation === 'POOR_MATCH') {
+          return false;
+        }
+      } catch {}
+    }
+    return true;
+  }
 
   /**
    * Constructs the secure evaluation link from configured FRONTEND_URL.
@@ -58,13 +82,15 @@ export class InterviewInvitationsService {
    */
   async createOrGetInvitation(
     createDto: CreateInterviewInvitationDto,
+    interviewerEmail?: string,
+    interviewerName?: string,
   ): Promise<any> {
     const { candidate_id } = createDto;
 
-    // 1. Find candidate with Job and Tech Lead relations
+    // 1. Find candidate with Job relation
     const candidate = await this.candidateRepository.findOne({
       where: { id: candidate_id },
-      relations: ['job', 'tech_lead'],
+      relations: ['job'],
     });
 
     // 2. Verify candidate exists
@@ -77,24 +103,32 @@ export class InterviewInvitationsService {
       throw new BadRequestException('Candidate has no assigned job.');
     }
 
-    // 4. Verify candidate has an assigned Tech Lead
-    if (!candidate.tech_lead_id || !candidate.tech_lead) {
+    // 4. RULE: Only candidate whose resume matches the JD can move to the interview stage!
+    if (!this.isResumeMatchingJd(candidate)) {
       throw new BadRequestException(
-        'Please assign a Tech Lead before sending the interview invitation.',
+        `Candidate resume does not match the job description (Match: ${candidate.ai_match_percentage ?? 0}%). Only matching candidate profiles can move to the technical interview stage.`,
       );
     }
 
-    // 5. Verify assigned Tech Lead is ACTIVE
-    if (candidate.tech_lead.status !== TechLeadStatus.ACTIVE) {
-      throw new BadRequestException('Selected Tech Lead is inactive.');
+    const targetEmail = (
+      interviewerEmail ||
+      candidate.interviewer_email ||
+      candidate.job.contact_email
+    )?.trim().toLowerCase();
+
+    const targetName = (interviewerName || 'Technical Interviewer').trim();
+
+    if (!targetEmail) {
+      throw new BadRequestException(
+        'Please provide an interviewer email ID before creating or sending the interview invitation.',
+      );
     }
 
     const now = new Date();
 
-    // 6. Check if an existing PENDING and non-expired invitation exists
+    // 5. Check if an existing PENDING and non-expired invitation exists
     const existingInvitations = await this.invitationRepository.find({
       where: { candidate_id: candidate.id },
-      relations: ['tech_lead'],
       order: { created_at: 'DESC' },
     });
 
@@ -107,7 +141,9 @@ export class InterviewInvitationsService {
       if (new Date(pendingInvite.expires_at) <= now) {
         pendingInvite.status = InvitationStatus.EXPIRED;
         await this.invitationRepository.save(pendingInvite);
-      } else if (pendingInvite.tech_lead_id === candidate.tech_lead.id) {
+      } else if (
+        pendingInvite.interviewer_email?.toLowerCase() === targetEmail
+      ) {
         // Reuse the existing pending invitation! (Prevents generating duplicate tokens)
         this.logger.log(
           `Reusing existing PENDING invitation ID ${pendingInvite.id} for candidate ${candidate.id}`,
@@ -117,14 +153,9 @@ export class InterviewInvitationsService {
         return {
           id: pendingInvite.id,
           candidate_id: candidate.id,
-          tech_lead_id: candidate.tech_lead.id,
+          interviewer_email: targetEmail,
+          interviewer_name: targetName,
           token: pendingInvite.token,
-          tech_lead: {
-            id: candidate.tech_lead.id,
-            name: candidate.tech_lead.name,
-            email: candidate.tech_lead.email,
-            status: candidate.tech_lead.status,
-          },
           job: {
             id: candidate.job.id,
             title: candidate.job.title,
@@ -141,24 +172,24 @@ export class InterviewInvitationsService {
           evaluation_url: evalLink,
         };
       } else {
-        // Tech Lead was reassigned, cancel previous pending invite
+        // Interviewer changed, cancel previous pending invite
         pendingInvite.status = InvitationStatus.CANCELLED;
         await this.invitationRepository.save(pendingInvite);
       }
     }
 
-    // 7. Generate secure token using Node.js crypto (64-character unguessable hex)
+    // 6. Generate secure token using Node.js crypto (64-character unguessable hex)
     const token = crypto.randomBytes(32).toString('hex');
 
-    // 8. Default expiration: 7 days from creation
+    // 7. Default expiration: 7 days from creation
     const expires_at = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
 
-    // 9. Save new invitation
+    // 8. Save new invitation
     const newInvitation = this.invitationRepository.create({
       candidate_id: candidate.id,
       candidate,
-      tech_lead_id: candidate.tech_lead.id,
-      tech_lead: candidate.tech_lead,
+      interviewer_email: targetEmail,
+      interviewer_name: targetName,
       token,
       status: InvitationStatus.PENDING,
       expires_at,
@@ -167,7 +198,7 @@ export class InterviewInvitationsService {
     const saved = await this.invitationRepository.save(newInvitation);
 
     this.logger.log(
-      `Created new interview invitation ID ${saved.id} for candidate ${candidate.id} assigned to Tech Lead ${candidate.tech_lead.name}`,
+      `Created new interview invitation ID ${saved.id} for candidate ${candidate.id} assigned to interviewer ${targetEmail}`,
     );
 
     const finalToken = saved.token || token;
@@ -175,14 +206,9 @@ export class InterviewInvitationsService {
     return {
       id: saved.id,
       candidate_id: candidate.id,
-      tech_lead_id: candidate.tech_lead.id,
+      interviewer_email: targetEmail,
+      interviewer_name: targetName,
       token: finalToken,
-      tech_lead: {
-        id: candidate.tech_lead.id,
-        name: candidate.tech_lead.name,
-        email: candidate.tech_lead.email,
-        status: candidate.tech_lead.status,
-      },
       job: {
         id: candidate.job.id,
         title: candidate.job.title,
@@ -206,7 +232,7 @@ export class InterviewInvitationsService {
   async findByCandidateId(candidateId: number): Promise<any | null> {
     const invitation = await this.invitationRepository.findOne({
       where: { candidate_id: candidateId },
-      relations: ['candidate', 'candidate.job', 'tech_lead'],
+      relations: ['candidate', 'candidate.job'],
       order: { created_at: 'DESC' },
     });
 
@@ -227,16 +253,9 @@ export class InterviewInvitationsService {
     return {
       id: invitation.id,
       candidate_id: invitation.candidate_id,
-      tech_lead_id: invitation.tech_lead_id,
+      interviewer_email: invitation.interviewer_email,
+      interviewer_name: invitation.interviewer_name,
       token: invitation.token,
-      tech_lead: invitation.tech_lead
-        ? {
-            id: invitation.tech_lead.id,
-            name: invitation.tech_lead.name,
-            email: invitation.tech_lead.email,
-            status: invitation.tech_lead.status,
-          }
-        : null,
       job: invitation.candidate?.job
         ? {
             id: invitation.candidate.job.id,
@@ -267,7 +286,7 @@ export class InterviewInvitationsService {
   async findByToken(token: string): Promise<any> {
     const invitation = await this.invitationRepository.findOne({
       where: { token },
-      relations: ['candidate', 'candidate.job', 'tech_lead'],
+      relations: ['candidate', 'candidate.job'],
     });
 
     if (!invitation) {
@@ -301,7 +320,7 @@ export class InterviewInvitationsService {
     if (invitation.status === InvitationStatus.COMPLETED || invitation.completed_at) {
       const existingEval = await this.evaluationRepository.findOne({
         where: { candidate_id: invitation.candidate_id },
-        relations: ['skills', 'tech_lead'],
+        relations: ['skills'],
       });
       if (existingEval) {
         evaluationData = {
@@ -325,19 +344,11 @@ export class InterviewInvitationsService {
       evaluation_id: evaluationData?.id || null,
       candidate_id: invitation.candidate_id,
       job_id: jobDetails?.id || null,
-      tech_lead_id: invitation.tech_lead_id,
-      tech_lead_email: invitation.tech_lead?.email || null,
+      interviewer_email: invitation.interviewer_email,
+      interviewer_name: invitation.interviewer_name,
       token: invitation.token,
       secure_token: invitation.token,
       is_valid: isValid,
-      tech_lead: invitation.tech_lead
-        ? {
-            id: invitation.tech_lead.id,
-            name: invitation.tech_lead.name,
-            email: invitation.tech_lead.email,
-            status: invitation.tech_lead.status,
-          }
-        : null,
       job: jobDetails,
       candidate: invitation.candidate
         ? {
@@ -365,12 +376,28 @@ export class InterviewInvitationsService {
   /**
    * Dispatches interview invitation email via Google OAuth2 / Gmail API.
    * Reuses existing PENDING invitation without duplicating tokens.
+   * Updates interviewer details on Candidate and Job.
    */
-  async sendInterviewInvitation(candidateId: number, recipientEmailOverride?: string): Promise<any> {
-    // 1. Find candidate with Job and Tech Lead relations
+  async sendInterviewInvitation(
+    candidateId: number,
+    scheduleOptions?: string | {
+      recipientEmailOverride?: string;
+      interviewer_email?: string;
+      interviewer_name?: string;
+      interview_date?: string;
+      interview_time?: string;
+      gmeet_link?: string;
+    },
+  ): Promise<any> {
+    const options =
+      typeof scheduleOptions === 'string'
+        ? { recipientEmailOverride: scheduleOptions }
+        : scheduleOptions || {};
+
+    // 1. Find candidate with Job relation
     const candidate = await this.candidateRepository.findOne({
       where: { id: candidateId },
-      relations: ['job', 'tech_lead'],
+      relations: ['job'],
     });
 
     // 2. Verify candidate exists
@@ -383,22 +410,51 @@ export class InterviewInvitationsService {
       throw new BadRequestException('Candidate has no assigned job.');
     }
 
-    // 4. Verify candidate has an assigned Tech Lead
-    if (!candidate.tech_lead_id || !candidate.tech_lead) {
+    // 4. RULE: Only candidates whose resume matches the JD can move to the interview stage!
+    if (!this.isResumeMatchingJd(candidate)) {
       throw new BadRequestException(
-        'Please assign a Tech Lead before sending the interview invitation.',
+        `Candidate resume does not match the job description (ATS Match: ${candidate.ai_match_percentage ?? 0}%). Only matching candidate profiles can move to the technical interview stage.`,
       );
     }
 
-    // 5. Verify assigned Tech Lead is ACTIVE
-    if (candidate.tech_lead.status !== TechLeadStatus.ACTIVE) {
-      throw new BadRequestException('Selected Tech Lead is inactive.');
+    // 5. Process manual interviewer email
+    const targetInterviewerEmail = (
+      options.interviewer_email ||
+      options.recipientEmailOverride ||
+      candidate.interviewer_email ||
+      candidate.job.contact_email
+    )?.trim().toLowerCase();
+
+    if (!targetInterviewerEmail) {
+      throw new BadRequestException(
+        'Please provide an interviewer email ID to schedule the interview.',
+      );
     }
 
-    // 6 & 7. Create or reuse the interview invitation (guarantees idempotent reuse of valid pending tokens)
-    const invitationData = await this.createOrGetInvitation({
-      candidate_id: candidateId,
-    });
+    const targetInterviewerName = (
+      options.interviewer_name || 'Technical Interviewer'
+    ).trim();
+
+    candidate.interviewer_email = targetInterviewerEmail;
+
+    if (options.interview_date) {
+      candidate.interview_date = options.interview_date.trim();
+    }
+    if (options.interview_time) {
+      candidate.interview_time = options.interview_time.trim();
+    }
+    if (options.gmeet_link) {
+      candidate.gmeet_link = options.gmeet_link.trim();
+    }
+
+    await this.candidateRepository.save(candidate);
+
+    // 6. Create or reuse the interview invitation
+    const invitationData = await this.createOrGetInvitation(
+      { candidate_id: candidateId },
+      targetInterviewerEmail,
+      targetInterviewerName,
+    );
 
     // 8. Generate evaluation URL
     const evalLink =
@@ -465,25 +521,30 @@ export class InterviewInvitationsService {
     }
 
     const targetRecipientEmail =
-      recipientEmailOverride ||
-      candidate.job.contact_email ||
-      invitationData.tech_lead?.email ||
-      candidate.tech_lead.email;
+      targetInterviewerEmail ||
+      options.recipientEmailOverride ||
+      candidate.interviewer_email ||
+      candidate.job?.contact_email;
 
     const targetRecipientName =
-      recipientEmailOverride || candidate.job.contact_email
-        ? 'Technical Evaluator'
-        : (invitationData.tech_lead?.name || candidate.tech_lead.name);
+      options.interviewer_name ||
+      invitationData.interviewer_name ||
+      'Technical Evaluator';
 
     // 11. Call EmailService -> GmailService and send email with attachments
     try {
       const emailResult = await this.emailService.sendInterviewInvitationEmail({
+        interviewerName: targetRecipientName,
+        interviewerEmail: targetRecipientEmail,
         techLeadName: targetRecipientName,
         techLeadEmail: targetRecipientEmail,
         candidateName: invitationData.candidate?.name || candidate.name,
         jobTitle: invitationData.job?.title || candidate.job.title,
         evaluationLink: evalLink,
         expiresAt: invitationData.expires_at,
+        interviewDate: candidate.interview_date || undefined,
+        interviewTime: candidate.interview_time || undefined,
+        gmeetLink: candidate.gmeet_link || undefined,
         jdSummary,
         jobDepartment: candidate.job.department,
         jobLocation: candidate.job.location,

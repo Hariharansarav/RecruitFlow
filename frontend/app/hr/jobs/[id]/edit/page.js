@@ -214,18 +214,11 @@ export default function EditJobPage({ params }) {
         </div>
       )}
 
-      {/* Loading Skeleton */}
+      {/* Simple Loading State */}
       {loading && !serverError && (
-        <div className="bg-white border border-slate-200 rounded-2xl p-8 shadow-sm animate-pulse space-y-6">
-          <div className="grid grid-cols-2 gap-6">
-            <div className="h-12 bg-slate-100 rounded" />
-            <div className="h-12 bg-slate-100 rounded" />
-          </div>
-          <div className="grid grid-cols-2 gap-6">
-            <div className="h-12 bg-slate-100 rounded" />
-            <div className="h-12 bg-slate-100 rounded" />
-          </div>
-          <div className="h-28 bg-slate-100 rounded" />
+        <div className="py-20 text-center">
+          <div className="w-7 h-7 border-2 border-slate-300 border-t-slate-800 rounded-full animate-spin mx-auto mb-3" />
+          <p className="text-xs text-slate-500 font-medium">Loading job details...</p>
         </div>
       )}
 

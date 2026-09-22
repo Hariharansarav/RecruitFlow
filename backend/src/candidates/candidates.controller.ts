@@ -62,6 +62,15 @@ export class CandidatesController {
   }
 
   /**
+   * POST /candidates/:id/screen - Trigger AI resume screening
+   */
+  @Post(':id/screen')
+  @HttpCode(HttpStatus.OK)
+  async screen(@Param('id', ParseIntPipe) id: number) {
+    return this.candidatesService.screenCandidateResume(id);
+  }
+
+  /**
    * GET /candidates/submitted - Retrieve all submitted candidates
    * Placed before :id to prevent route collision
    */

@@ -7,8 +7,6 @@ import {
   ClipboardCheck,
   Search,
   X,
-  Star,
-  Sparkles,
   ArrowRight,
   User,
   AlertCircle,
@@ -17,12 +15,12 @@ import {
   ExternalLink,
   Briefcase,
   UserCheck,
-  Award,
   Filter,
   RotateCcw,
   CheckCircle2,
   SlidersHorizontal,
   Eye,
+  Star,
 } from 'lucide-react';
 import Button from '@/components/ui/Button';
 import Badge from '@/components/ui/Badge';
@@ -30,12 +28,6 @@ import EvaluationDetailModal from '@/components/evaluations/EvaluationDetailModa
 import interviewEvaluationService from '@/services/interviewEvaluationService';
 import authService from '@/services/authService';
 import { formatDate } from '@/utils/dateUtils';
-import {
-  EvaluatedMetricIcon,
-  ScorecardTrophyIcon,
-  AiNeuralIcon,
-  HiringGrowthIcon,
-} from '@/components/ui/CraftedIcons';
 
 export default function HrEvaluationsPage() {
   const router = useRouter();
@@ -138,7 +130,7 @@ export default function HrEvaluationsPage() {
         const candName = ev.candidate?.name?.toLowerCase() || '';
         const candEmail = ev.candidate?.email?.toLowerCase() || '';
         const jobTitle = ev.job?.title?.toLowerCase() || '';
-        const techLeadName = ev.tech_lead?.name?.toLowerCase() || '';
+        const interviewerEmail = ev.interviewer_email?.toLowerCase() || '';
         const hrName = ev.hr?.name?.toLowerCase() || '';
         const notes = ev.notes?.toLowerCase() || '';
         const skillsStr = (ev.skills || []).map((s) => s.skill.toLowerCase()).join(' ');
@@ -147,7 +139,7 @@ export default function HrEvaluationsPage() {
           candName.includes(q) ||
           candEmail.includes(q) ||
           jobTitle.includes(q) ||
-          techLeadName.includes(q) ||
+          interviewerEmail.includes(q) ||
           hrName.includes(q) ||
           notes.includes(q) ||
           skillsStr.includes(q);
@@ -270,70 +262,78 @@ export default function HrEvaluationsPage() {
         </div>
       </div>
 
-      {/* 2. Executive KPI Cards with Crafted Icons */}
+      {/* 2. Executive KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Total Evaluated */}
-        <div className="bg-white/95 backdrop-blur-xl rounded-2xl p-5 border border-slate-200/90 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] hover:shadow-[0_12px_32px_-6px_rgba(245,158,11,0.12)] flex items-center justify-between group hover:-translate-y-1 transition-all duration-300">
+        <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs flex items-center justify-between">
           <div>
             <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
               Evaluations
             </p>
-            <h3 className="text-3xl sm:text-4xl font-black text-slate-900 mt-1 tracking-tight">
+            <h3 className="text-3xl sm:text-4xl font-bold text-slate-900 mt-1 tracking-tight">
               {stats.total}
             </h3>
             <p className="text-xs text-slate-500 font-medium mt-0.5">Completed interviews</p>
           </div>
-          <EvaluatedMetricIcon className="w-11 h-11 group-hover:scale-105 transition-transform" />
+          <div className="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-700">
+            <ClipboardCheck className="w-5 h-5" />
+          </div>
         </div>
 
         {/* Avg Overall Score */}
-        <div className="bg-white/95 backdrop-blur-xl rounded-2xl p-5 border border-slate-200/90 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] hover:shadow-[0_12px_32px_-6px_rgba(245,158,11,0.12)] flex items-center justify-between group hover:-translate-y-1 transition-all duration-300">
+        <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs flex items-center justify-between">
           <div>
             <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
               Avg Score
             </p>
             <div className="flex items-baseline gap-1 mt-1">
-              <h3 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">
+              <h3 className="text-3xl sm:text-4xl font-bold text-slate-900 tracking-tight">
                 {stats.avgScore}
               </h3>
               <span className="text-xs font-bold text-slate-400">/ 5.0</span>
             </div>
-            <p className="text-xs text-emerald-600 font-semibold mt-0.5">Candidate average</p>
+            <p className="text-xs text-slate-600 font-medium mt-0.5">Candidate average</p>
           </div>
-          <ScorecardTrophyIcon className="w-10 h-10 group-hover:scale-105 transition-transform" />
+          <div className="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-700">
+            <CheckCircle2 className="w-5 h-5" />
+          </div>
         </div>
 
         {/* High JD Match */}
-        <div className="bg-white/95 backdrop-blur-xl rounded-2xl p-5 border border-slate-200/90 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] hover:shadow-[0_12px_32px_-6px_rgba(99,102,241,0.12)] flex items-center justify-between group hover:-translate-y-1 transition-all duration-300">
+        <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs flex items-center justify-between">
           <div>
             <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
               High Match (≥75%)
             </p>
-            <h3 className="text-3xl sm:text-4xl font-black text-slate-900 mt-1 tracking-tight">
+            <h3 className="text-3xl sm:text-4xl font-bold text-slate-900 mt-1 tracking-tight">
               {stats.highMatch}
             </h3>
             <p className="text-xs text-slate-500 font-medium mt-0.5">Strong skill alignment</p>
           </div>
-          <AiNeuralIcon className="w-10 h-10 group-hover:scale-105 transition-transform" />
+          <div className="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-700">
+            <UserCheck className="w-5 h-5" />
+          </div>
         </div>
 
         {/* Top Performers */}
-        <div className="bg-white/95 backdrop-blur-xl rounded-2xl p-5 border border-slate-200/90 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] hover:shadow-[0_12px_32px_-6px_rgba(16,185,129,0.12)] flex items-center justify-between group hover:-translate-y-1 transition-all duration-300">
+        <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs flex items-center justify-between">
           <div>
             <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
               Top Rated (≥4.0)
             </p>
-            <h3 className="text-3xl sm:text-4xl font-black text-slate-900 mt-1 tracking-tight">
+            <h3 className="text-3xl sm:text-4xl font-bold text-slate-900 mt-1 tracking-tight">
               {stats.topRated}
             </h3>
             <p className="text-xs text-slate-500 font-medium mt-0.5">Prime hiring candidates</p>
           </div>
-          <HiringGrowthIcon className="w-10 h-10 group-hover:scale-105 transition-transform" />
+          <div className="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-700">
+            <Briefcase className="w-5 h-5" />
+          </div>
         </div>
       </div>
 
       {/* 3. Search & Interactive Filtering Suite */}
-      <div className="bg-white/95 backdrop-blur-xl rounded-2xl p-4 sm:p-5 border border-slate-200/90 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] space-y-3.5">
+      <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-xs space-y-3.5">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
           {/* Search bar */}
           <div className="relative flex-1">
@@ -343,27 +343,26 @@ export default function HrEvaluationsPage() {
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Search by candidate name, email, job, skills, or interviewer notes..."
-              className="w-full pl-10 pr-9 py-2.5 rounded-xl border border-slate-200 bg-slate-50/70 hover:bg-white focus:bg-white text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 transition-all"
+              className="w-full pl-10 pr-9 py-2.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-white focus:bg-white text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-900 transition-all"
             />
             {searchTerm && (
               <button
                 onClick={() => setSearchTerm('')}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700"
-                aria-label="Clear search"
               >
                 <X className="w-4 h-4" />
               </button>
             )}
           </div>
 
-          {/* Job Filter Dropdown */}
+          {/* Requisition & Sort Controls */}
           <div className="flex items-center gap-2">
             <select
               value={jobFilter}
               onChange={(e) => setJobFilter(e.target.value)}
-              className="px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 bg-white hover:border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-600/20 shadow-xs"
+              className="px-3 py-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 outline-none transition-all cursor-pointer"
             >
-              <option value="ALL">All Jobs ({evaluations.length})</option>
+              <option value="ALL">All Requisitions ({uniqueJobs.length})</option>
               {uniqueJobs.map((j) => (
                 <option key={j.id} value={j.id}>
                   {j.title}
@@ -371,22 +370,21 @@ export default function HrEvaluationsPage() {
               ))}
             </select>
 
-            {/* Sort Order Dropdown */}
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
-              className="px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 bg-white hover:border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-600/20 shadow-xs"
+              className="px-3 py-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 outline-none transition-all cursor-pointer"
             >
-              <option value="NEWEST">Newest First</option>
-              <option value="SCORE_DESC">Highest Score</option>
-              <option value="SCORE_ASC">Lowest Score</option>
-              <option value="MATCH_DESC">Highest JD Match</option>
+              <option value="NEWEST">Sort: Newest First</option>
+              <option value="SCORE_DESC">Sort: Score (Highest)</option>
+              <option value="SCORE_ASC">Sort: Score (Lowest)</option>
+              <option value="MATCH_DESC">Sort: Match (Highest)</option>
             </select>
           </div>
         </div>
 
-        {/* Filter Quick Pills */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pt-1 pb-0.5 text-xs select-none">
+        {/* Quick Filter Segmented Buttons */}
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs pt-1 border-t border-slate-100">
           <button
             onClick={() => setFilterType('ALL')}
             className={`px-3 py-1.5 rounded-lg font-bold transition-all whitespace-nowrap ${
@@ -399,67 +397,53 @@ export default function HrEvaluationsPage() {
           </button>
           <button
             onClick={() => setFilterType('TOP_PERFORMER')}
-            className={`px-3 py-1.5 rounded-lg font-bold transition-all whitespace-nowrap flex items-center gap-1.5 ${
+            className={`px-3 py-1.5 rounded-lg font-bold transition-all whitespace-nowrap ${
               filterType === 'TOP_PERFORMER'
                 ? 'bg-slate-900 text-white shadow-xs'
                 : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
             }`}
           >
-            <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
-            <span>Top Rated ({stats.topRated})</span>
+            Top Rated ({stats.topRated})
           </button>
           <button
             onClick={() => setFilterType('HIGH_MATCH')}
-            className={`px-3 py-1.5 rounded-lg font-bold transition-all whitespace-nowrap flex items-center gap-1.5 ${
+            className={`px-3 py-1.5 rounded-lg font-bold transition-all whitespace-nowrap ${
               filterType === 'HIGH_MATCH'
                 ? 'bg-slate-900 text-white shadow-xs'
                 : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
             }`}
           >
-            <Award className="w-3.5 h-3.5 text-blue-500" />
-            <span>High Match ({stats.highMatch})</span>
+            High Match ({stats.highMatch})
           </button>
           <button
             onClick={() => setFilterType('HAS_RESUME')}
-            className={`px-3 py-1.5 rounded-lg font-bold transition-all whitespace-nowrap flex items-center gap-1.5 ${
+            className={`px-3 py-1.5 rounded-lg font-bold transition-all whitespace-nowrap ${
               filterType === 'HAS_RESUME'
                 ? 'bg-slate-900 text-white shadow-xs'
                 : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
             }`}
           >
-            <FileText className="w-3.5 h-3.5 text-indigo-500" />
-            <span>Has Resume ({stats.withResume})</span>
+            Has Resume ({stats.withResume})
           </button>
         </div>
       </div>
 
       {/* 4. Error State */}
       {error && (
-        <div className="bg-rose-50 border border-rose-200 rounded-3xl p-6 text-center max-w-lg mx-auto shadow-xs">
+        <div className="bg-rose-50 border border-rose-200 rounded-2xl p-6 text-center max-w-lg mx-auto shadow-xs">
           <AlertCircle className="w-8 h-8 text-rose-600 mx-auto mb-2" />
-          <h2 className="text-base font-bold text-zinc-950 mb-1">{error}</h2>
+          <h2 className="text-base font-bold text-slate-900 mb-1">{error}</h2>
           <Button variant="primary" size="sm" onClick={() => fetchEvaluations(true)} className="mt-3">
             Retry
           </Button>
         </div>
       )}
 
-      {/* 5. Loading Skeletons */}
+      {/* 5. Simple Loading State */}
       {loading && !error && (
-        <div className="space-y-4 animate-pulse">
-          {[...Array(3)].map((_, i) => (
-            <div
-              key={i}
-              className="glass-card-elevated border border-zinc-200/80 rounded-3xl p-6 shadow-xs h-36 space-y-4"
-            >
-              <div className="flex justify-between items-center">
-                <div className="h-5 bg-zinc-200 rounded w-1/4" />
-                <div className="h-6 bg-zinc-200 rounded-full w-20" />
-              </div>
-              <div className="h-4 bg-zinc-100 rounded w-3/4" />
-              <div className="h-8 bg-zinc-100 rounded-xl w-full" />
-            </div>
-          ))}
+        <div className="py-20 text-center">
+          <div className="w-7 h-7 border-2 border-slate-300 border-t-slate-800 rounded-full animate-spin mx-auto mb-3" />
+          <p className="text-xs text-slate-500 font-medium">Loading candidate evaluations...</p>
         </div>
       )}
 
@@ -481,7 +465,7 @@ export default function HrEvaluationsPage() {
                 const skills = item.skills || [];
                 const resumeUrl = candidate?.resume_url;
                 const evaluatorName =
-                  item.tech_lead?.name || item.hr?.name || 'Recruiter';
+                  item.interviewer_email || item.hr?.name || 'Technical Interviewer';
                 const initials = candidate?.name
                   ? candidate.name
                       .split(' ')

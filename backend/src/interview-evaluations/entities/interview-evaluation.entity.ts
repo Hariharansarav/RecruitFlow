@@ -11,7 +11,6 @@ import {
 } from 'typeorm';
 import { Candidate } from '../../candidates/entities/candidate.entity';
 import { User } from '../../users/entities/user.entity';
-import { TechLead } from '../../tech-leads/entities/tech-lead.entity';
 import { InterviewEvaluationSkill } from './interview-evaluation-skill.entity';
 
 @Entity({ name: 'interview_evaluations' })
@@ -34,12 +33,8 @@ export class InterviewEvaluation {
   @JoinColumn({ name: 'hr_id' })
   hr: User | null;
 
-  @Column({ name: 'tech_lead_id', type: 'integer', nullable: true })
-  tech_lead_id: number | null;
-
-  @ManyToOne(() => TechLead, { onDelete: 'SET NULL', nullable: true })
-  @JoinColumn({ name: 'tech_lead_id' })
-  tech_lead: TechLead | null;
+  @Column({ name: 'interviewer_email', type: 'varchar', length: 255, nullable: true })
+  interviewer_email: string | null;
 
   @Column({
     type: 'decimal',

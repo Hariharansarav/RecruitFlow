@@ -130,7 +130,7 @@ export class CompanyService {
 
     const candidates = await this.candidateRepository.find({
       where: whereCondition,
-      relations: ['job', 'tech_lead'],
+      relations: ['job'],
       order: {
         updated_at: 'DESC',
       },
@@ -140,7 +140,7 @@ export class CompanyService {
       candidates.map(async (c) => {
         const evaluation = await this.evaluationRepository.findOne({
           where: { candidate_id: c.id },
-          relations: ['skills', 'tech_lead'],
+          relations: ['skills'],
         });
 
         const requiredSkills = this.normalizeSkills(c.job?.required_skills);
@@ -173,25 +173,14 @@ export class CompanyService {
             title: c.job.title,
             department: c.job.department,
           },
-          tech_lead: c.tech_lead
-            ? {
-                id: c.tech_lead.id,
-                name: c.tech_lead.name,
-                email: c.tech_lead.email,
-              }
-            : null,
+          interviewer_email: c.interviewer_email || null,
           match_percentage: matchPercentage,
           interview: evaluation
             ? {
                 score: overallScore,
                 notes: evaluation.notes,
-                tech_lead: evaluation.tech_lead
-                  ? {
-                      id: evaluation.tech_lead.id,
-                      name: evaluation.tech_lead.name,
-                      email: evaluation.tech_lead.email,
-                    }
-                  : null,
+                interviewer_email:
+                  evaluation.interviewer_email || c.interviewer_email || null,
               }
             : null,
         };
@@ -330,7 +319,7 @@ export class CompanyService {
 
     const candidate = await this.candidateRepository.findOne({
       where: { id },
-      relations: ['job', 'submitted_by', 'tech_lead'],
+      relations: ['job', 'submitted_by'],
     });
 
     if (!candidate) {
@@ -349,7 +338,7 @@ export class CompanyService {
 
     const evaluation = await this.evaluationRepository.findOne({
       where: { candidate_id: id },
-      relations: ['hr', 'tech_lead', 'skills'],
+      relations: ['hr', 'skills'],
     });
 
     const requiredSkills = this.normalizeSkills(candidate.job.required_skills);
@@ -377,14 +366,7 @@ export class CompanyService {
         skills: candidate.skills,
         resume_url: candidate.resume_url,
         status: candidate.status,
-        tech_lead_id: candidate.tech_lead_id,
-        tech_lead: candidate.tech_lead
-          ? {
-              id: candidate.tech_lead.id,
-              name: candidate.tech_lead.name,
-              email: candidate.tech_lead.email,
-            }
-          : null,
+        interviewer_email: candidate.interviewer_email || null,
       },
       job: {
         id: candidate.job.id,
@@ -416,19 +398,8 @@ export class CompanyService {
               })) || [],
             created_at: evaluation.created_at,
             updated_at: evaluation.updated_at,
-            tech_lead: evaluation.tech_lead
-              ? {
-                  id: evaluation.tech_lead.id,
-                  name: evaluation.tech_lead.name,
-                  email: evaluation.tech_lead.email,
-                }
-              : candidate.tech_lead
-              ? {
-                  id: candidate.tech_lead.id,
-                  name: candidate.tech_lead.name,
-                  email: candidate.tech_lead.email,
-                }
-              : null,
+            interviewer_email:
+              evaluation.interviewer_email || candidate.interviewer_email || null,
             hr: evaluation.hr
               ? {
                   id: evaluation.hr.id,

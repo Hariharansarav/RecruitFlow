@@ -4,19 +4,19 @@ import { useState, useEffect } from 'react';
 import { X, Save, AlertCircle, Briefcase, Lock, Check } from 'lucide-react';
 import Button from '@/components/ui/Button';
 import candidateService from '@/services/candidateService';
-import techLeadService from '@/services/techLeadService';
 import authService from '@/services/authService';
 
 export default function EditCandidateModal({ isOpen, candidate, onClose, onSuccess }) {
-  const [activeTechLeads, setActiveTechLeads] = useState([]);
-  const [loadingTechLeads, setLoadingTechLeads] = useState(true);
+  const isResumeMatched =
+    Number(candidate?.ai_match_percentage) >= 80 &&
+    candidate?.ai_screening_details?.recommendation !== 'POOR_MATCH';
 
   // Form fields
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     phone: '',
-    tech_lead_id: '',
+    interviewer_email: '',
     resume_url: '',
     skills: '',
   });
@@ -33,43 +33,13 @@ export default function EditCandidateModal({ isOpen, candidate, onClose, onSucce
       name: candidate.name || '',
       email: candidate.email || '',
       phone: candidate.phone || '',
-      tech_lead_id: candidate.tech_lead_id
-        ? String(candidate.tech_lead_id)
-        : candidate.tech_lead?.id
-        ? String(candidate.tech_lead.id)
-        : '',
+      interviewer_email: candidate.interviewer_email || '',
       resume_url: candidate.resume_url || '',
       skills: candidate.skills || '',
     });
     setErrors({});
     setServerError(null);
     setIsSubmitting(false);
-    setLoadingTechLeads(true);
-
-    let isMounted = true;
-    async function loadTechLeads() {
-      try {
-        const leads = await techLeadService.getActiveTechLeads();
-        if (isMounted) {
-          setActiveTechLeads(leads || []);
-        }
-      } catch (err) {
-        console.error('Failed to load tech leads:', err);
-        if (isMounted) {
-          setServerError('Unable to load active Tech Leads.');
-        }
-      } finally {
-        if (isMounted) {
-          setLoadingTechLeads(false);
-        }
-      }
-    }
-
-    loadTechLeads();
-
-    return () => {
-      isMounted = false;
-    };
   }, [isOpen, candidate]);
 
   // Handle Escape key to close modal
@@ -120,13 +90,14 @@ export default function EditCandidateModal({ isOpen, candidate, onClose, onSucce
         if (trimmed.length > 50) return 'Phone cannot exceed 50 characters.';
         return '';
       case 'resume_url':
-        if (trimmed) {
-          if (!validateUrl(trimmed)) {
-            return 'Please enter a valid URL (e.g. https://example.com/resume.pdf).';
-          }
-          if (trimmed.length > 500) {
-            return 'Resume URL cannot exceed 500 characters.';
-          }
+        if (!trimmed) {
+          return 'Candidate resume is required for AI screening.';
+        }
+        if (!trimmed.startsWith('data:') && !validateUrl(trimmed)) {
+          return 'Please enter a valid URL (e.g. https://example.com/resume.pdf).';
+        }
+        if (trimmed.length > 500 && !trimmed.startsWith('data:')) {
+          return 'Resume URL cannot exceed 500 characters.';
         }
         return '';
       case 'skills':
@@ -177,7 +148,9 @@ export default function EditCandidateModal({ isOpen, candidate, onClose, onSucce
         phone: formData.phone.trim(),
         resume_url: formData.resume_url.trim() || undefined,
         skills: formData.skills.trim() || undefined,
-        tech_lead_id: formData.tech_lead_id ? Number(formData.tech_lead_id) : undefined,
+        interviewer_email: isResumeMatched
+          ? formData.interviewer_email.trim() || undefined
+          : undefined,
       };
 
       const updated = await candidateService.updateCandidate(candidate.id, payload, currentUser?.id);
@@ -219,7 +192,7 @@ export default function EditCandidateModal({ isOpen, candidate, onClose, onSucce
               Edit Candidate
             </h2>
             <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
-              Update candidate profile details, contact information, and Tech Lead assignment.
+              Update candidate profile details, contact information, and interviewer assignment.
             </p>
           </div>
           <button
@@ -357,39 +330,39 @@ export default function EditCandidateModal({ isOpen, candidate, onClose, onSucce
             </div>
           </div>
 
-          {/* Tech Lead Dropdown */}
-          <div className="space-y-1">
-            <label
-              htmlFor="edit_candidate_tech_lead_id"
-              className="block text-xs font-semibold text-slate-700 uppercase tracking-wider"
-            >
-              Assigned Tech Lead
-            </label>
-            <select
-              id="edit_candidate_tech_lead_id"
-              name="tech_lead_id"
-              value={formData.tech_lead_id}
-              onChange={handleChange}
-              disabled={loadingTechLeads}
-              className="w-full px-3.5 py-2 rounded-xl border border-slate-200 focus:border-indigo-600 focus:ring-2 focus:ring-indigo-100 bg-white hover:border-slate-300 text-slate-900 text-sm focus:outline-none transition-all"
-            >
-              {loadingTechLeads ? (
-                <option value="">Loading Tech Leads...</option>
-              ) : (
-                <>
-                  <option value="">Unassigned</option>
-                  {activeTechLeads.map((tl) => (
-                    <option key={tl.id} value={tl.id}>
-                      {tl.name} — {tl.email}
-                    </option>
-                  ))}
-                </>
-              )}
-            </select>
-            <p className="text-[11px] text-slate-400">
-              Tech Leads receive evaluation invitation links to score candidate competencies.
-            </p>
-          </div>
+          {/* Stage 2 Interviewer Assignment */}
+          {isResumeMatched ? (
+            <div className="space-y-1">
+              <label
+                htmlFor="edit_candidate_interviewer_email"
+                className="block text-xs font-semibold text-slate-700 uppercase tracking-wider"
+              >
+                Interviewer Email ID (Stage 2)
+              </label>
+              <input
+                id="edit_candidate_interviewer_email"
+                name="interviewer_email"
+                type="email"
+                value={formData.interviewer_email}
+                onChange={handleChange}
+                placeholder="e.g. interviewer@company.com"
+                className="w-full px-3.5 py-2 rounded-xl border border-slate-200 focus:border-indigo-600 focus:ring-2 focus:ring-indigo-100 bg-white hover:border-slate-300 text-slate-900 text-sm focus:outline-none transition-all"
+              />
+              <p className="text-[11px] text-slate-500">
+                Manually enter the technical interviewer's email address who will conduct the Stage 2 evaluation.
+              </p>
+            </div>
+          ) : (
+            <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-start gap-2.5">
+              <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+              <div>
+                <p className="font-semibold text-amber-950">Stage 2 (Technical Interview) Locked</p>
+                <p className="text-amber-800 text-[11px] mt-0.5">
+                  Interviewer email can only be entered if the candidate's resume matches the JD (ATS match &ge; 80%). Current ATS score: {candidate?.ai_match_percentage !== null && candidate?.ai_match_percentage !== undefined ? `${candidate.ai_match_percentage}%` : 'Not evaluated'}.
+                </p>
+              </div>
+            </div>
+          )}
 
           {/* Resume Link */}
           <div className="space-y-1">
@@ -398,9 +371,11 @@ export default function EditCandidateModal({ isOpen, candidate, onClose, onSucce
                 htmlFor="edit_candidate_resume_url"
                 className="block text-xs font-semibold text-slate-700 uppercase tracking-wider"
               >
-                Resume Link
+                Resume Link <span className="text-red-500">*</span>
               </label>
-              <span className="text-xs text-slate-400">Optional</span>
+              <span className="text-[11px] font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-full">
+                Required for AI Screening
+              </span>
             </div>
             <input
               id="edit_candidate_resume_url"

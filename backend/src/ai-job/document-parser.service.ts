@@ -32,8 +32,6 @@ export interface UploadedFileDto {
 export class DocumentParserService {
   private readonly logger = new Logger(DocumentParserService.name);
 
-  // Maximum file size: 5MB
-  private readonly MAX_FILE_SIZE = 5 * 1024 * 1024;
   // Maximum allowed extracted text length (characters)
   private readonly MAX_TEXT_LENGTH = 50000;
 
@@ -52,14 +50,7 @@ export class DocumentParserService {
       throw new BadRequestException('No file buffer provided for parsing.');
     }
 
-    // 1. Validate file size (HTTP 413)
-    if (file.size > this.MAX_FILE_SIZE || file.buffer.length > this.MAX_FILE_SIZE) {
-      throw new PayloadTooLargeException(
-        `Uploaded file exceeds the maximum allowed size of 5MB (got ${(file.size / (1024 * 1024)).toFixed(2)}MB).`,
-      );
-    }
-
-    // 2. Validate file extension and MIME type
+    // 1. Validate file extension and MIME type
     const ext = path.extname(file.originalname || '').toLowerCase();
     const isExtensionAllowed = this.ALLOWED_EXTENSIONS.includes(ext);
     const isMimeAllowed = this.ALLOWED_MIME_TYPES.includes(file.mimetype);

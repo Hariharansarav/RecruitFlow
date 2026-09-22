@@ -7,7 +7,6 @@ import { ArrowLeft, Save, AlertCircle } from 'lucide-react';
 import Button from '@/components/ui/Button';
 import Toast from '@/components/ui/Toast';
 import candidateService from '@/services/candidateService';
-import techLeadService from '@/services/techLeadService';
 import authService from '@/services/authService';
 
 export default function EditCandidatePage({ params }) {
@@ -21,7 +20,7 @@ export default function EditCandidatePage({ params }) {
   const [serverError, setServerError] = useState(null);
   const [toast, setToast] = useState(null);
 
-  const [activeTechLeads, setActiveTechLeads] = useState([]);
+  const [candidate, setCandidate] = useState(null);
 
   // Form fields
   const [formData, setFormData] = useState({
@@ -32,21 +31,22 @@ export default function EditCandidatePage({ params }) {
     skills: '',
     jobTitle: '',
     status: '',
-    tech_lead_id: '',
+    interviewer_email: '',
   });
 
   const [errors, setErrors] = useState({});
+
+  const isResumeMatched =
+    Number(candidate?.ai_match_percentage) >= 80 &&
+    candidate?.ai_screening_details?.recommendation !== 'POOR_MATCH';
 
   const fetchCandidate = useCallback(async () => {
     setLoading(true);
     setServerError(null);
 
     try {
-      const [data, leads] = await Promise.all([
-        candidateService.getCandidateById(candidateId),
-        techLeadService.getActiveTechLeads(),
-      ]);
-      setActiveTechLeads(leads);
+      const data = await candidateService.getCandidateById(candidateId);
+      setCandidate(data);
       setFormData({
         name: data.name || '',
         email: data.email || '',
@@ -55,7 +55,7 @@ export default function EditCandidatePage({ params }) {
         skills: data.skills || '',
         jobTitle: data.job?.title || 'General',
         status: data.status || 'APPLIED',
-        tech_lead_id: data.tech_lead_id ? String(data.tech_lead_id) : '',
+        interviewer_email: data.interviewer_email || '',
       });
     } catch (err) {
       console.error('Failed to load candidate for editing:', err);
@@ -141,7 +141,9 @@ export default function EditCandidatePage({ params }) {
         email: formData.email.trim(),
         phone: formData.phone.trim(),
         resume_url: formData.resume_url.trim() || undefined,
-        tech_lead_id: formData.tech_lead_id ? Number(formData.tech_lead_id) : undefined,
+        interviewer_email: isResumeMatched
+          ? formData.interviewer_email.trim() || undefined
+          : undefined,
       };
 
       await candidateService.updateCandidate(candidateId, payload, user?.id);
@@ -214,17 +216,11 @@ export default function EditCandidatePage({ params }) {
         </div>
       )}
 
-      {/* Loading Skeleton */}
+      {/* Simple Loading State */}
       {loading && !serverError && (
-        <div className="bg-white border border-zinc-200 rounded-3xl p-8 shadow-xs animate-pulse space-y-6">
-          <div className="grid grid-cols-2 gap-6">
-            <div className="h-12 bg-zinc-100 rounded-xl" />
-            <div className="h-12 bg-zinc-100 rounded-xl" />
-          </div>
-          <div className="grid grid-cols-2 gap-6">
-            <div className="h-12 bg-zinc-100 rounded-xl" />
-            <div className="h-12 bg-zinc-100 rounded-xl" />
-          </div>
+        <div className="py-20 text-center">
+          <div className="w-7 h-7 border-2 border-slate-300 border-t-slate-800 rounded-full animate-spin mx-auto mb-3" />
+          <p className="text-xs text-slate-500 font-medium">Loading candidate details...</p>
         </div>
       )}
 
@@ -365,31 +361,39 @@ export default function EditCandidatePage({ params }) {
               )}
             </div>
 
-            <div className="space-y-2">
-              <label
-                htmlFor="tech_lead_id"
-                className="block text-xs font-semibold text-zinc-700 uppercase tracking-wider"
-              >
-                Assigned Tech Lead
-              </label>
-              <select
-                id="tech_lead_id"
-                name="tech_lead_id"
-                value={formData.tech_lead_id}
-                onChange={handleChange}
-                className="w-full px-4 py-2.5 rounded-xl border border-zinc-200 text-sm focus:outline-none focus:ring-2 focus:ring-black focus:border-black bg-zinc-50/50 hover:border-zinc-300 text-zinc-900 transition-all font-medium"
-              >
-                <option value="">Select Tech Lead</option>
-                {activeTechLeads.map((tl) => (
-                  <option key={tl.id} value={tl.id}>
-                    {tl.name} — {tl.email}
-                  </option>
-                ))}
-              </select>
-              <p className="text-xs text-zinc-400">
-                HR can reassign candidate evaluation to any active Tech Lead.
-              </p>
-            </div>
+            {/* Stage 2 Interviewer Assignment */}
+            {isResumeMatched ? (
+              <div className="space-y-2">
+                <label
+                  htmlFor="interviewer_email"
+                  className="block text-xs font-semibold text-zinc-700 uppercase tracking-wider"
+                >
+                  Interviewer Email ID (Stage 2)
+                </label>
+                <input
+                  id="interviewer_email"
+                  name="interviewer_email"
+                  type="email"
+                  value={formData.interviewer_email}
+                  onChange={handleChange}
+                  placeholder="e.g. interviewer@company.com"
+                  className="w-full px-4 py-2.5 rounded-xl border border-zinc-200 text-sm focus:outline-none focus:ring-2 focus:ring-black focus:border-black bg-zinc-50/50 hover:border-zinc-300 text-zinc-900 transition-all font-medium"
+                />
+                <p className="text-xs text-zinc-400">
+                  Manually enter the technical interviewer's email address who will conduct Stage 2 evaluation.
+                </p>
+              </div>
+            ) : (
+              <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-start gap-2.5">
+                <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-semibold text-amber-950">Stage 2 (Technical Interview) Locked</p>
+                  <p className="text-amber-800 text-xs mt-0.5">
+                    Interviewer email can only be entered if the candidate's resume matches the JD (ATS match &ge; 80%). Current ATS score: {candidate?.ai_match_percentage !== null && candidate?.ai_match_percentage !== undefined ? `${candidate.ai_match_percentage}%` : 'Not evaluated'}.
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Form Actions */}

@@ -36,8 +36,31 @@ export class UpdateCandidateDto {
   })
   status?: CandidateStatus;
 
+
   @IsOptional()
-  @IsInt({ message: 'tech_lead_id must be an integer' })
-  @IsPositive({ message: 'tech_lead_id must be a positive integer' })
-  tech_lead_id?: number;
+  @IsString()
+  resume_text?: string;
+
+  @IsOptional()
+  ai_match_percentage?: number;
+
+  @IsOptional()
+  @IsString()
+  ai_screening_details?: string;
+
+  @IsOptional()
+  @IsString()
+  interviewer_email?: string;
+
+  @IsOptional()
+  @IsString()
+  interview_date?: string;
+
+  @IsOptional()
+  @IsString()
+  interview_time?: string;
+
+  @IsOptional()
+  @IsString()
+  gmeet_link?: string;
 }

@@ -65,6 +65,22 @@ export class AiJobController {
   }
 
   /**
+   * POST /api/ai/jobs/enhance-description
+   * Polishes, structures, and redesigns draft Job Description content.
+   */
+  @Post('enhance-description')
+  @HttpCode(HttpStatus.OK)
+  async enhanceDescription(
+    @Body() body: { title?: string; description: string; department?: string },
+    @Query('hr_id') hrId?: string,
+    @Headers('x-user-id') headerUserId?: string,
+    @Headers('x-user-role') headerUserRole?: string,
+  ) {
+    const resolvedHrId = this.resolveUserId(hrId, headerUserId);
+    return this.aiJobService.enhanceDescription(body, resolvedHrId, headerUserRole);
+  }
+
+  /**
    * Resolves the user ID from query parameter or custom header.
    */
   private resolveUserId(

@@ -12,7 +12,6 @@ import { CompanyModule } from './company/company.module';
 import { EmailModule } from './email/email.module';
 import { AuthModule } from './auth/auth.module';
 import { HrModule } from './hr/hr.module';
-import { TechLeadsModule } from './tech-leads/tech-leads.module';
 import { InterviewInvitationsModule } from './interview-invitations/interview-invitations.module';
 import { AiJobModule } from './ai-job/ai-job.module';
 
@@ -73,7 +72,6 @@ import { AiJobModule } from './ai-job/ai-job.module';
     EmailModule,
     AuthModule,
     HrModule,
-    TechLeadsModule,
     InterviewInvitationsModule,
     AiJobModule,
   ],
@@ -85,11 +83,34 @@ export class AppModule implements OnModuleInit {
 
   constructor(private readonly dataSource: DataSource) {}
 
-  onModuleInit() {
+  async onModuleInit() {
     if (this.dataSource.isInitialized) {
       this.logger.log(
         'Successfully established connection to the PostgreSQL database.',
       );
+      try {
+        await this.dataSource.query(
+          `ALTER TABLE candidates ALTER COLUMN resume_url TYPE text;`,
+        );
+        this.logger.log('Ensured candidates.resume_url column is of type TEXT.');
+      } catch (err: any) {
+        this.logger.warn(`Could not alter candidates.resume_url column: ${err.message}`);
+      }
+
+      try {
+        await this.dataSource.query(`
+          ALTER TABLE IF EXISTS candidates DROP COLUMN IF EXISTS tech_lead_id CASCADE;
+          ALTER TABLE IF EXISTS interview_invitations DROP COLUMN IF EXISTS tech_lead_id CASCADE;
+          ALTER TABLE IF EXISTS interview_evaluations DROP COLUMN IF EXISTS tech_lead_id CASCADE;
+          ALTER TABLE IF EXISTS interview_invitations ADD COLUMN IF NOT EXISTS interviewer_email varchar(255);
+          ALTER TABLE IF EXISTS interview_invitations ADD COLUMN IF NOT EXISTS interviewer_name varchar(255);
+          ALTER TABLE IF EXISTS interview_evaluations ADD COLUMN IF NOT EXISTS interviewer_email varchar(255);
+          DROP TABLE IF EXISTS tech_leads CASCADE;
+        `);
+        this.logger.log('Successfully dropped tech_leads table and cleaned up related foreign key columns.');
+      } catch (err: any) {
+        this.logger.warn(`Could not drop tech_leads table or columns: ${err.message}`);
+      }
     } else {
       this.logger.error(
         'Database DataSource initialization failed. Check your database credentials and network connectivity.',

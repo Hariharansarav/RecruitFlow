@@ -2,33 +2,20 @@
 
 import { useState, useEffect, useCallback, useMemo, use } from 'react';
 import {
-  Sparkles,
   CheckCircle2,
   AlertCircle,
   Clock,
   Briefcase,
-  User,
   Mail,
   Phone,
   FileText,
   ExternalLink,
-  Building2,
-  Star,
   Check,
   Send,
-  Award,
-  MessageSquare,
-  ShieldCheck,
   Lock,
   Eye,
   ChevronDown,
   ChevronUp,
-  HelpCircle,
-  ThumbsUp,
-  ThumbsDown,
-  RefreshCw,
-  Calendar,
-  Layers,
 } from 'lucide-react';
 import Button from '@/components/ui/Button';
 import Badge from '@/components/ui/Badge';
@@ -37,7 +24,7 @@ import ResumePreviewModal from '@/components/candidates/ResumePreviewModal';
 import interviewInvitationService from '@/services/interviewInvitationService';
 import { formatDate } from '@/utils/dateUtils';
 
-export default function TechLeadEvaluationPortalPage({ params }) {
+export default function TechnicalEvaluationPortalPage({ params }) {
   const unwrappedParams = use(params);
   const token = unwrappedParams.token;
 
@@ -58,16 +45,16 @@ export default function TechLeadEvaluationPortalPage({ params }) {
   const [isResumeModalOpen, setIsResumeModalOpen] = useState(false);
 
   // UI helpers
-  const [rubricOpen, setRubricOpen] = useState(true);
+  const [rubricOpen, setRubricOpen] = useState(false);
 
-  // Skill Score Labels for guidance
+  // Skill Score Labels for guidance - Clean, dignified, desaturated color styling
   const scoreDescriptions = {
-    0: { label: 'No Knowledge', desc: 'No demonstrated capability or conceptual understanding', color: 'text-zinc-600 bg-zinc-100 border-zinc-200' },
-    1: { label: 'Novice', desc: 'Rudimentary understanding; needs constant handholding', color: 'text-rose-700 bg-rose-50 border-rose-200' },
-    2: { label: 'Elementary', desc: 'Can handle basic routine tasks with supervision', color: 'text-amber-700 bg-amber-50 border-amber-200' },
-    3: { label: 'Competent', desc: 'Solid working proficiency; autonomous on standard requirements', color: 'text-sky-700 bg-sky-50 border-sky-200' },
-    4: { label: 'Proficient', desc: 'Strong architectural thinking, optimization, and clean practices', color: 'text-indigo-700 bg-indigo-50 border-indigo-200' },
-    5: { label: 'Expert', desc: 'Mastery level; systems design acumen and mentoring capability', color: 'text-emerald-700 bg-emerald-50 border-emerald-200' },
+    0: { label: 'No Knowledge', desc: 'No demonstrated capability or conceptual understanding', color: 'text-slate-600 bg-slate-100 border-slate-200' },
+    1: { label: 'Novice', desc: 'Rudimentary understanding; needs constant supervision', color: 'text-rose-800 bg-rose-50 border-rose-200' },
+    2: { label: 'Elementary', desc: 'Can handle routine tasks with guidance', color: 'text-amber-800 bg-amber-50 border-amber-200' },
+    3: { label: 'Competent', desc: 'Solid working proficiency; autonomous on standard requirements', color: 'text-slate-800 bg-slate-100 border-slate-200' },
+    4: { label: 'Proficient', desc: 'Strong architectural thinking, optimization, and clean practices', color: 'text-blue-800 bg-blue-50 border-blue-200' },
+    5: { label: 'Expert', desc: 'Mastery level; systems design acumen and mentoring capability', color: 'text-emerald-800 bg-emerald-50 border-emerald-200' },
   };
 
   // Helper to normalize skills from comma-separated string
@@ -100,7 +87,7 @@ export default function TechLeadEvaluationPortalPage({ params }) {
           alreadyCompleted: true,
           candidate: data.candidate,
           job: data.job,
-          tech_lead: data.tech_lead,
+          interviewer_email: data.interviewer_email,
           overall_score: data.evaluation?.overall_score ?? data.evaluation?.score,
           jd_match_percentage: data.evaluation?.jd_match_percentage,
           notes: data.evaluation?.notes,
@@ -129,7 +116,8 @@ export default function TechLeadEvaluationPortalPage({ params }) {
 
   const candidate = invitationData?.candidate;
   const job = invitationData?.job || candidate?.job;
-  const techLead = invitationData?.tech_lead;
+  const interviewerEmail = invitationData?.interviewer_email || candidate?.interviewer_email;
+  const interviewerName = invitationData?.interviewer_name || 'Technical Interviewer';
   const resumeUrl = candidate?.resume_url;
 
   // Derive required skills list
@@ -190,12 +178,12 @@ export default function TechLeadEvaluationPortalPage({ params }) {
     );
 
     if (missing.length > 0) {
-      setFormError(`Please provide a score for all competencies. Missing: ${missing.join(', ')}`);
+      setFormError(`Please provide a rating for all competencies. Missing: ${missing.join(', ')}`);
       return;
     }
 
     if (!notes || notes.trim().length < 5) {
-      setFormError('Please provide detailed interview comments/notes (at least 5 characters).');
+      setFormError('Please enter substantive interview feedback notes (minimum 5 characters).');
       return;
     }
 
@@ -231,7 +219,7 @@ export default function TechLeadEvaluationPortalPage({ params }) {
         alreadyCompleted: false,
         candidate: result.candidate || candidate,
         job: result.job || job,
-        tech_lead: result.tech_lead || techLead,
+        interviewer_email: result.interviewer_email || interviewerEmail,
         overall_score: result.overall_score ?? result.score,
         jd_match_percentage: result.jd_match_percentage,
         notes: finalNotes,
@@ -241,7 +229,7 @@ export default function TechLeadEvaluationPortalPage({ params }) {
       });
 
       setToast({
-        message: 'Technical evaluation submitted successfully! Thank you.',
+        message: 'Technical assessment submitted successfully.',
         type: 'success',
       });
     } catch (err) {
@@ -259,7 +247,7 @@ export default function TechLeadEvaluationPortalPage({ params }) {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50/60 text-zinc-900 flex flex-col font-sans antialiased selection:bg-zinc-900 selection:text-white">
+    <div className="min-h-screen bg-[#f8fafc] text-slate-900 flex flex-col font-sans antialiased selection:bg-slate-900 selection:text-white">
       {/* Toast Notification */}
       {toast && (
         <Toast
@@ -278,50 +266,48 @@ export default function TechLeadEvaluationPortalPage({ params }) {
         job={job}
       />
 
-      {/* Floating Resume Quick Trigger (Visible when scrolling if candidate has resume) */}
+      {/* Floating Resume Quick Trigger */}
       {resumeUrl && !loading && !error && (
-        <div className="fixed bottom-6 right-6 z-40 animate-bounce-subtle">
+        <div className="fixed bottom-6 right-6 z-40">
           <button
             type="button"
             onClick={() => setIsResumeModalOpen(true)}
-            className="flex items-center gap-2 px-4 py-3 rounded-full bg-zinc-950 hover:bg-zinc-800 text-white font-semibold text-xs shadow-xl shadow-zinc-900/20 hover:scale-105 transition-all cursor-pointer border border-zinc-700"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-white hover:bg-slate-50 text-slate-800 font-semibold text-xs shadow-lg shadow-slate-900/10 border border-slate-300 transition-colors cursor-pointer"
             title="Open Candidate Resume Preview"
           >
-            <FileText className="w-4 h-4 text-blue-400" />
-            <span>View Resume</span>
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            <FileText className="w-3.5 h-3.5 text-slate-600" />
+            <span>Candidate Resume</span>
           </button>
         </div>
       )}
 
-      {/* Standalone Tech Lead Portal Header */}
-      <header className="bg-white/95 backdrop-blur-md border-b border-zinc-200/80 sticky top-0 z-30 shadow-xs">
+      {/* Corporate Technical Portal Header */}
+      <header className="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-2xs">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-zinc-900 to-zinc-950 text-white flex items-center justify-center font-bold text-sm shadow-sm ring-1 ring-white/10 shrink-0">
+            <div className="w-8 h-8 rounded-lg bg-slate-900 text-white flex items-center justify-center font-bold text-xs tracking-tight shrink-0">
               RF
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <span className="font-extrabold text-sm tracking-tight text-zinc-950">
+                <span className="font-bold text-sm text-slate-900 tracking-tight">
                   RecruitFlow
                 </span>
-                <span className="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full bg-zinc-100 text-zinc-700 font-bold border border-zinc-200">
-                  Technical Portal
+                <span className="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 font-semibold border border-slate-200">
+                  Technical Assessment
                 </span>
               </div>
-              <p className="text-[11px] text-zinc-400 truncate hidden sm:block">
-                Confidential Technical Interview &amp; Competency Assessment
+              <p className="text-[11px] text-slate-500 truncate hidden sm:block">
+                Confidential Candidate Evaluation
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-3 shrink-0">
-            {techLead && (
-              <div className="flex items-center gap-2 px-3 py-1 rounded-xl bg-zinc-50 border border-zinc-200/80 text-xs">
-                <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                <span className="text-zinc-500 hidden sm:inline">Interviewer:</span>
-                <span className="font-bold text-zinc-900">{techLead.name}</span>
+            {(interviewerName || interviewerEmail) && (
+              <div className="flex items-center gap-2 px-3 py-1 rounded-lg bg-slate-50 border border-slate-200 text-xs">
+                <span className="text-slate-500 hidden sm:inline">Interviewer:</span>
+                <span className="font-semibold text-slate-900">{interviewerName || interviewerEmail}</span>
               </div>
             )}
 
@@ -329,12 +315,12 @@ export default function TechLeadEvaluationPortalPage({ params }) {
               <button
                 type="button"
                 onClick={() => setIsResumeModalOpen(true)}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-zinc-100 hover:bg-zinc-200 text-zinc-800 transition-colors border border-zinc-200 cursor-pointer"
-                title="Preview candidate resume in modal"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-white hover:bg-slate-50 text-slate-800 transition-colors border border-slate-200 cursor-pointer"
+                title="Preview candidate resume"
               >
-                <Eye className="w-3.5 h-3.5 text-zinc-600" />
-                <span className="hidden md:inline">Preview Resume</span>
-                <span className="md:hidden">Resume</span>
+                <Eye className="w-3.5 h-3.5 text-slate-600" />
+                <span className="hidden sm:inline">Preview Resume</span>
+                <span className="sm:hidden">Resume</span>
               </button>
             )}
           </div>
@@ -342,89 +328,92 @@ export default function TechLeadEvaluationPortalPage({ params }) {
       </header>
 
       {/* Main Content Area */}
-      <main className="flex-1 max-w-4xl w-full mx-auto px-4 sm:px-6 py-8 sm:py-12">
-        {/* Loading Skeleton */}
+      <main className="flex-1 max-w-4xl w-full mx-auto px-4 sm:px-6 py-8 sm:py-10">
+        {/* Simple Minimal Loading State (No flashy icons) */}
         {loading && (
-          <div className="space-y-6 animate-pulse">
-            <div className="bg-white border border-zinc-200 rounded-3xl p-8 h-48" />
-            <div className="bg-white border border-zinc-200 rounded-3xl p-8 h-80" />
+          <div className="py-28 flex flex-col items-center justify-center space-y-3">
+            <div className="w-6 h-6 border-2 border-slate-200 border-t-slate-800 rounded-full animate-spin" />
+            <p className="text-xs font-medium text-slate-500 tracking-wide">
+              Loading evaluation session...
+            </p>
           </div>
         )}
 
         {/* Error / Expired State */}
         {!loading && error && (
-          <div className="bg-white border border-rose-200 rounded-3xl p-8 sm:p-12 text-center max-w-lg mx-auto shadow-sm space-y-4">
-            <div className="w-14 h-14 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center mx-auto border border-rose-100 shadow-xs">
-              <AlertCircle className="w-7 h-7" />
+          <div className="bg-white border border-slate-200 rounded-2xl p-8 sm:p-10 text-center max-w-lg mx-auto shadow-xs space-y-4">
+            <div className="w-12 h-12 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center mx-auto border border-slate-200">
+              <AlertCircle className="w-6 h-6 text-slate-600" />
             </div>
-            <h1 className="text-xl font-bold text-zinc-950">Evaluation Link Inactive</h1>
-            <p className="text-sm text-zinc-600 leading-relaxed">{error}</p>
-            <div className="pt-4 border-t border-zinc-100 text-xs text-zinc-400 space-y-1">
+            <h1 className="text-lg font-bold text-slate-900">Evaluation Session Inactive</h1>
+            <p className="text-xs text-slate-600 leading-relaxed">{error}</p>
+            <div className="pt-4 border-t border-slate-100 text-[11px] text-slate-400 space-y-1">
               <p>Security Notice: Evaluation links are strictly single-use and time-bound.</p>
-              <p>Please contact your HR Talent Acquisition partner to issue an updated token.</p>
+              <p>Please contact the HR recruitment team to issue an updated link.</p>
             </div>
           </div>
         )}
 
         {/* Success / Already Completed Screen */}
         {!loading && !error && submittedResult && (
-          <div className="bg-white border border-zinc-200 rounded-3xl p-8 sm:p-12 shadow-sm space-y-8 max-w-2xl mx-auto text-center animate-fade-in">
-            <div className="w-16 h-16 rounded-3xl bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto border border-emerald-100 shadow-sm">
-              <CheckCircle2 className="w-8 h-8" />
+          <div className="bg-white border border-slate-200 rounded-2xl p-8 sm:p-10 shadow-xs space-y-7 max-w-2xl mx-auto text-center">
+            <div className="w-12 h-12 rounded-xl bg-slate-100 text-slate-900 flex items-center justify-center mx-auto border border-slate-200">
+              <Check className="w-6 h-6 text-slate-800" />
             </div>
 
-            <div className="space-y-2">
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-100/70 text-emerald-800 mb-1">
-                <Lock className="w-3.5 h-3.5" />
+            <div className="space-y-1.5">
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-xs font-semibold bg-slate-100 text-slate-700 border border-slate-200">
+                <Lock className="w-3 h-3 text-slate-500" />
                 <span>
                   {submittedResult.alreadyCompleted
                     ? 'Evaluation Completed & Locked'
-                    : 'Assessment Confirmed & Submitted'}
+                    : 'Assessment Recorded'}
                 </span>
               </div>
-              <h1 className="text-2xl sm:text-3xl font-extrabold text-zinc-950 tracking-tight">
+              <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
                 {submittedResult.alreadyCompleted
                   ? 'Technical Evaluation Already Submitted'
-                  : 'Technical Assessment Recorded'}
+                  : 'Technical Assessment Confirmed'}
               </h1>
-              <p className="text-sm text-zinc-600 max-w-md mx-auto leading-relaxed">
-                Thank you, <span className="font-semibold text-zinc-900">{techLead?.name || 'Tech Lead'}</span>. Your evaluation for{' '}
-                <span className="font-semibold text-zinc-900">{candidate?.name}</span> has been securely saved and synchronized with the HR recruitment dashboard.
+              <p className="text-xs text-slate-600 max-w-md mx-auto leading-relaxed">
+                Thank you, <span className="font-semibold text-slate-900">{interviewerName || interviewerEmail || 'Interviewer'}</span>. Your evaluation for{' '}
+                <span className="font-semibold text-slate-900">{candidate?.name}</span> has been securely recorded and synced with the HR dashboard.
               </p>
             </div>
 
             {/* Assessment Summary Snapshot Card */}
-            <div className="bg-zinc-50 border border-zinc-200/90 rounded-2xl p-6 text-left space-y-5">
-              <div className="flex items-center justify-between pb-3 border-b border-zinc-200">
-                <span className="text-xs font-bold uppercase tracking-wider text-zinc-500 flex items-center gap-1.5">
-                  <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                  Official Assessment Record
+            <div className="bg-slate-50/70 border border-slate-200 rounded-xl p-5 text-left space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-200">
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-600">
+                  Assessment Record
                 </span>
-                <Badge status="COMPLETED">Completed</Badge>
+                <span className="text-[11px] font-semibold px-2 py-0.5 rounded bg-white border border-slate-200 text-slate-700">
+                  Completed
+                </span>
               </div>
 
-              <div className="grid grid-cols-2 gap-4 text-sm">
+              <div className="grid grid-cols-2 gap-4 text-xs">
                 <div>
-                  <span className="text-[11px] font-semibold text-zinc-400 block uppercase tracking-wider">Candidate</span>
-                  <span className="font-bold text-zinc-900 text-base">{candidate?.name}</span>
+                  <span className="text-[10px] font-semibold text-slate-400 block uppercase tracking-wider">Candidate</span>
+                  <span className="font-bold text-slate-900 text-sm">{candidate?.name}</span>
                 </div>
                 <div>
-                  <span className="text-[11px] font-semibold text-zinc-400 block uppercase tracking-wider">Target Position</span>
-                  <span className="font-bold text-zinc-900">{job?.title}</span>
+                  <span className="text-[10px] font-semibold text-slate-400 block uppercase tracking-wider">Target Position</span>
+                  <span className="font-semibold text-slate-900">{job?.title}</span>
                 </div>
                 {submittedResult.overall_score !== undefined && (
-                  <div className="bg-white p-3 rounded-xl border border-zinc-200">
-                    <span className="text-[11px] font-bold text-zinc-400 block uppercase tracking-wider">Overall Score</span>
-                    <span className="font-extrabold text-zinc-950 text-xl">
+                  <div className="bg-white p-3 rounded-lg border border-slate-200">
+                    <span className="text-[10px] font-semibold text-slate-400 block uppercase tracking-wider">Overall Score</span>
+                    <span className="font-bold text-slate-900 text-lg">
                       {Number(submittedResult.overall_score).toFixed(2)}
-                      <span className="text-xs text-zinc-400 font-normal"> / 5.0</span>
+                      <span className="text-xs text-slate-400 font-normal"> / 5.0</span>
                     </span>
                   </div>
                 )}
                 {submittedResult.jd_match_percentage !== undefined && (
-                  <div className="bg-white p-3 rounded-xl border border-zinc-200">
-                    <span className="text-[11px] font-bold text-zinc-400 block uppercase tracking-wider">JD Match</span>
-                    <span className="font-extrabold text-emerald-600 text-xl">
+                  <div className="bg-white p-3 rounded-lg border border-slate-200">
+                    <span className="text-[10px] font-semibold text-slate-400 block uppercase tracking-wider">JD Match</span>
+                    <span className="font-bold text-slate-900 text-lg">
                       {Math.round(Number(submittedResult.jd_match_percentage))}%
                     </span>
                   </div>
@@ -433,18 +422,18 @@ export default function TechLeadEvaluationPortalPage({ params }) {
 
               {/* Competencies Rated */}
               {submittedResult.skills && submittedResult.skills.length > 0 && (
-                <div className="pt-3 border-t border-zinc-200/60 space-y-2">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 block">
+                <div className="pt-3 border-t border-slate-200 space-y-2">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">
                     Competencies Evaluated ({submittedResult.skills.length})
                   </span>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     {submittedResult.skills.map((s, idx) => (
                       <div
                         key={idx}
-                        className="bg-white border border-zinc-200 rounded-xl px-3.5 py-2 flex items-center justify-between text-xs"
+                        className="bg-white border border-slate-200 rounded-lg px-3 py-2 flex items-center justify-between text-xs"
                       >
-                        <span className="font-semibold text-zinc-800">{s.skill}</span>
-                        <span className="font-extrabold text-zinc-950 bg-zinc-100 px-2.5 py-0.5 rounded-lg border border-zinc-200">
+                        <span className="font-medium text-slate-800">{s.skill}</span>
+                        <span className="font-bold text-slate-900 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
                           {s.score} / 5
                         </span>
                       </div>
@@ -455,81 +444,77 @@ export default function TechLeadEvaluationPortalPage({ params }) {
 
               {/* Interviewer Notes */}
               {submittedResult.notes && (
-                <div className="pt-3 border-t border-zinc-200/60 space-y-1.5">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 block">
-                    Evaluation Comments &amp; Notes
+                <div className="pt-3 border-t border-slate-200 space-y-1">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">
+                    Evaluation Comments
                   </span>
-                  <div className="text-xs text-zinc-800 bg-white p-3.5 rounded-xl border border-zinc-200 whitespace-pre-wrap leading-relaxed">
+                  <div className="text-xs text-slate-700 bg-white p-3 rounded-lg border border-slate-200 whitespace-pre-wrap leading-relaxed">
                     {submittedResult.notes}
                   </div>
                 </div>
               )}
 
-              {/* Persistent Resume Access on Completed Screen */}
+              {/* Resume Access on Completed Screen */}
               {resumeUrl && (
-                <div className="pt-3 border-t border-zinc-200/60 flex items-center justify-between gap-3">
-                  <span className="text-xs text-zinc-500">Candidate Resume Attachment:</span>
+                <div className="pt-3 border-t border-slate-200 flex items-center justify-between gap-3 text-xs">
+                  <span className="text-slate-500">Candidate Resume:</span>
                   <div className="flex items-center gap-2">
                     <button
                       type="button"
                       onClick={() => setIsResumeModalOpen(true)}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-white hover:bg-zinc-100 text-zinc-800 border border-zinc-200 shadow-2xs transition-colors cursor-pointer"
+                      className="px-2.5 py-1 rounded-md text-xs font-semibold bg-white hover:bg-slate-100 text-slate-800 border border-slate-200 transition-colors cursor-pointer"
                     >
-                      <Eye className="w-3.5 h-3.5 text-zinc-500" />
-                      <span>Preview Resume</span>
+                      Preview Resume
                     </button>
                     <a
                       href={resumeUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-zinc-100 hover:bg-zinc-200 text-zinc-700 transition-colors"
+                      className="p-1 rounded-md text-slate-500 hover:text-slate-800 transition-colors"
+                      title="Open link in new tab"
                     >
                       <ExternalLink className="w-3.5 h-3.5" />
-                      <span>Open File</span>
                     </a>
                   </div>
                 </div>
               )}
             </div>
 
-            <p className="text-xs text-zinc-400">
-              Session is locked. For modifications or reassessment requests, please contact the Talent Acquisition lead.
+            <p className="text-xs text-slate-400">
+              This session is officially recorded and locked. For adjustments, please contact the recruitment coordinator.
             </p>
           </div>
         )}
 
         {/* Active Evaluation Form Screen */}
         {!loading && !error && !submittedResult && candidate && (
-          <div className="space-y-8 animate-fade-in">
-            {/* Candidate Hero Card with Resume Feature */}
-            <div className="bg-white border border-zinc-200/80 rounded-3xl p-6 sm:p-8 shadow-xs space-y-6 relative overflow-hidden">
-              {/* Subtle top decorative accent gradient */}
-              <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-zinc-900 via-indigo-600 to-zinc-900" />
-
-              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+          <div className="space-y-6">
+            {/* Candidate Header Card */}
+            <div className="bg-white border border-slate-200 rounded-2xl p-6 sm:p-7 shadow-xs space-y-5">
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-5">
                 {/* Avatar + Candidate Info */}
                 <div className="flex items-start sm:items-center gap-4">
-                  <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-zinc-900 to-zinc-800 text-white font-black text-xl flex items-center justify-center shadow-md ring-4 ring-zinc-100 shrink-0">
+                  <div className="w-12 h-12 rounded-xl bg-slate-900 text-white font-bold text-base flex items-center justify-center shrink-0">
                     {candidateInitials}
                   </div>
 
                   <div className="space-y-1">
                     <div className="flex items-center gap-2.5 flex-wrap">
-                      <h1 className="text-2xl sm:text-3xl font-extrabold text-zinc-950 tracking-tight">
+                      <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
                         {candidate.name}
                       </h1>
                       <Badge status={candidate.status || 'ACTIVE'}>
-                        {candidate.status || 'Active Candidate'}
+                        {candidate.status || 'Candidate'}
                       </Badge>
                     </div>
 
-                    <p className="text-sm text-zinc-600 flex items-center gap-2 flex-wrap">
-                      <span className="flex items-center gap-1 font-semibold text-zinc-900">
-                        <Briefcase className="w-4 h-4 text-zinc-500" />
-                        {job?.title || 'General Requisition'}
+                    <p className="text-xs text-slate-600 flex items-center gap-1.5 flex-wrap">
+                      <span className="flex items-center gap-1 font-semibold text-slate-900">
+                        <Briefcase className="w-3.5 h-3.5 text-slate-500" />
+                        {job?.title || 'Position'}
                       </span>
                       {job?.department && (
-                        <span className="text-zinc-400">
+                        <span className="text-slate-400">
                           • {job.department}
                         </span>
                       )}
@@ -538,26 +523,23 @@ export default function TechLeadEvaluationPortalPage({ params }) {
                 </div>
 
                 {/* Candidate Resume Action Box */}
-                <div className="bg-zinc-50 border border-zinc-200 rounded-2xl p-3 sm:p-4 flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 shrink-0">
-                  <div className="flex items-center gap-2 text-xs text-zinc-600 pr-2">
-                    <FileText className="w-4 h-4 text-zinc-500" />
-                    <div>
-                      <span className="font-bold text-zinc-900 block">Candidate Resume</span>
-                      <span className="text-[11px] text-zinc-400">
-                        {resumeUrl ? 'Available for review' : 'Not provided'}
-                      </span>
-                    </div>
+                <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 flex items-center justify-between sm:justify-start gap-3 shrink-0">
+                  <div className="text-xs text-slate-600">
+                    <span className="font-semibold text-slate-900 block text-xs">Resume</span>
+                    <span className="text-[11px] text-slate-500">
+                      {resumeUrl ? 'Available' : 'Not attached'}
+                    </span>
                   </div>
 
                   {resumeUrl ? (
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5">
                       <button
                         type="button"
                         onClick={() => setIsResumeModalOpen(true)}
-                        className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-zinc-950 hover:bg-zinc-800 text-white shadow-xs transition-all cursor-pointer"
-                        title="Preview resume directly in modal viewer"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-900 hover:bg-slate-800 text-white transition-colors cursor-pointer"
+                        title="Preview resume directly"
                       >
-                        <Eye className="w-3.5 h-3.5 text-blue-300" />
+                        <Eye className="w-3.5 h-3.5" />
                         <span>Preview</span>
                       </button>
 
@@ -565,27 +547,23 @@ export default function TechLeadEvaluationPortalPage({ params }) {
                         href={resumeUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center justify-center p-2 rounded-xl text-xs font-semibold bg-white hover:bg-zinc-100 text-zinc-700 border border-zinc-200 transition-colors"
-                        title="Open resume in a new tab"
+                        className="inline-flex items-center justify-center p-1.5 rounded-lg text-xs text-slate-600 hover:text-slate-900 hover:bg-slate-200/60 transition-colors"
+                        title="Open resume link in new tab"
                       >
-                        <ExternalLink className="w-4 h-4 text-zinc-500" />
+                        <ExternalLink className="w-3.5 h-3.5" />
                       </a>
                     </div>
-                  ) : (
-                    <span className="text-xs text-zinc-400 italic px-2 py-1 bg-zinc-100 rounded-lg">
-                      No resume URL on file
-                    </span>
-                  )}
+                  ) : null}
                 </div>
               </div>
 
-              {/* Secondary Details & Candidate Profile Skills */}
-              <div className="pt-4 border-t border-zinc-100 grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs text-zinc-600">
+              {/* Secondary Details */}
+              <div className="pt-4 border-t border-slate-100 grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs text-slate-600">
                 <div className="flex items-center gap-2 truncate">
-                  <Mail className="w-4 h-4 text-zinc-400 shrink-0" />
+                  <Mail className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                   <a
                     href={`mailto:${candidate.email}`}
-                    className="hover:text-zinc-900 transition-colors truncate"
+                    className="hover:text-slate-900 transition-colors truncate"
                   >
                     {candidate.email}
                   </a>
@@ -593,30 +571,30 @@ export default function TechLeadEvaluationPortalPage({ params }) {
 
                 {candidate.phone && (
                   <div className="flex items-center gap-2">
-                    <Phone className="w-4 h-4 text-zinc-400 shrink-0" />
-                    <span className="font-mono">{candidate.phone}</span>
+                    <Phone className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                    <span>{candidate.phone}</span>
                   </div>
                 )}
 
                 {invitationData?.expires_at && (
-                  <div className="flex items-center gap-2 text-zinc-500 sm:justify-end">
-                    <Clock className="w-4 h-4 text-amber-500 shrink-0" />
+                  <div className="flex items-center gap-1.5 text-slate-500 sm:justify-end">
+                    <Clock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                     <span>Valid until {formatDate(invitationData.expires_at)}</span>
                   </div>
                 )}
               </div>
 
-              {/* Candidate's Declared Skills (if any exist) */}
+              {/* Candidate's Declared Skills */}
               {candidate.skills && (
-                <div className="pt-3 border-t border-zinc-100 flex items-start gap-2 text-xs">
-                  <span className="font-bold text-zinc-500 shrink-0 mt-0.5">
-                    Profile Skills:
+                <div className="pt-3 border-t border-slate-100 flex items-start gap-2 text-xs">
+                  <span className="font-semibold text-slate-500 shrink-0 mt-0.5 text-[11px]">
+                    Candidate Skills:
                   </span>
                   <div className="flex flex-wrap gap-1.5">
                     {candidate.skills.split(',').map((skill, sIdx) => (
                       <span
                         key={sIdx}
-                        className="px-2 py-0.5 rounded-md bg-zinc-100 text-zinc-700 font-medium text-[11px] border border-zinc-200/80"
+                        className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 font-medium text-[11px] border border-slate-200"
                       >
                         {skill.trim()}
                       </span>
@@ -626,52 +604,48 @@ export default function TechLeadEvaluationPortalPage({ params }) {
               )}
             </div>
 
-            {/* Collapsible Evaluation Rubric & Guidelines */}
-            <div className="bg-white border border-zinc-200/80 rounded-3xl overflow-hidden shadow-xs">
+            {/* Collapsible Evaluation Rubric Guide */}
+            <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-xs">
               <button
                 type="button"
                 onClick={() => setRubricOpen(!rubricOpen)}
-                className="w-full px-6 py-4 flex items-center justify-between text-left hover:bg-zinc-50/70 transition-colors cursor-pointer"
+                className="w-full px-5 py-3.5 flex items-center justify-between text-left hover:bg-slate-50 transition-colors cursor-pointer"
               >
-                <div className="flex items-center gap-2.5">
-                  <HelpCircle className="w-4 h-4 text-blue-600" />
-                  <span className="font-bold text-sm text-zinc-950">
-                    Interviewer Scoring Rubric &amp; Evaluation Guide
-                  </span>
-                  <span className="text-[11px] text-zinc-400 hidden sm:inline">
-                    (Standard 0 - 5 Scale)
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold text-xs text-slate-900">
+                    Scoring Rubric Reference (0 – 5 Scale)
                   </span>
                 </div>
-                <div className="flex items-center gap-1.5 text-xs font-semibold text-zinc-500">
-                  <span>{rubricOpen ? 'Hide Rubric' : 'Show Rubric'}</span>
+                <div className="flex items-center gap-1 text-xs text-slate-500 font-medium">
+                  <span>{rubricOpen ? 'Hide' : 'Show Guide'}</span>
                   {rubricOpen ? (
-                    <ChevronUp className="w-4 h-4" />
+                    <ChevronUp className="w-3.5 h-3.5 text-slate-400" />
                   ) : (
-                    <ChevronDown className="w-4 h-4" />
+                    <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
                   )}
                 </div>
               </button>
 
               {rubricOpen && (
-                <div className="px-6 pb-6 pt-2 border-t border-zinc-100 bg-zinc-50/40">
-                  <p className="text-xs text-zinc-500 mb-4">
-                    Score each required competency based on the candidate&apos;s live code performance, system design reasoning, and theoretical depth:
+                <div className="px-5 pb-5 pt-1 border-t border-slate-100 bg-slate-50/50">
+                  <p className="text-xs text-slate-500 mb-3">
+                    Benchmark candidate competency against standard engineering performance levels:
                   </p>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
                     {Object.entries(scoreDescriptions).map(([scoreVal, { label, desc, color }]) => (
                       <div
                         key={scoreVal}
-                        className="bg-white p-3 rounded-xl border border-zinc-200/80 shadow-2xs space-y-1"
+                        className="bg-white p-3 rounded-lg border border-slate-200 space-y-1"
                       >
                         <div className="flex items-center justify-between">
-                          <span className="font-black text-sm text-zinc-950">
-                            Level {scoreVal}
+                          <span className="font-bold text-xs text-slate-900">
+                            Score {scoreVal}
                           </span>
-                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md border ${color}`}>
+                          <span className={`text-[10px] font-semibold px-2 py-0.5 rounded border ${color}`}>
                             {label}
                           </span>
                         </div>
-                        <p className="text-[11px] text-zinc-500 leading-snug">{desc}</p>
+                        <p className="text-[11px] text-slate-500 leading-snug">{desc}</p>
                       </div>
                     ))}
                   </div>
@@ -680,37 +654,36 @@ export default function TechLeadEvaluationPortalPage({ params }) {
             </div>
 
             {/* Evaluation Form */}
-            <form onSubmit={handleSubmit} className="space-y-8">
+            <form onSubmit={handleSubmit} className="space-y-6">
               {/* Form Validation Error Alert */}
               {formError && (
-                <div className="bg-rose-50 border border-rose-200 text-rose-800 p-4 rounded-2xl flex items-start gap-3 text-sm animate-shake">
-                  <AlertCircle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
+                <div className="bg-rose-50 border border-rose-200 text-rose-800 p-4 rounded-xl flex items-start gap-2.5 text-xs">
+                  <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
                   <div>
-                    <div className="font-bold">Evaluation Action Required</div>
-                    <div className="text-xs text-rose-700 mt-0.5">{formError}</div>
+                    <span className="font-bold block">Incomplete Assessment</span>
+                    <span>{formError}</span>
                   </div>
                 </div>
               )}
 
               {/* Technical Competencies Assessment Grid */}
-              <div className="bg-white border border-zinc-200/80 rounded-3xl p-6 sm:p-8 shadow-xs space-y-6">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-4 border-b border-zinc-100">
+              <div className="bg-white border border-slate-200 rounded-2xl p-6 sm:p-7 shadow-xs space-y-5">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-4 border-b border-slate-100">
                   <div>
-                    <h2 className="text-lg font-bold text-zinc-950 flex items-center gap-2">
-                      <Layers className="w-5 h-5 text-zinc-700" />
-                      Required Technical Competencies
+                    <h2 className="text-sm font-bold uppercase tracking-wider text-slate-900">
+                      Technical Competencies
                     </h2>
-                    <p className="text-xs text-zinc-500 mt-0.5">
-                      Extracted from the job requisition requirements. Every competency must be assigned a rating.
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      Rate the candidate across each required role competency (0 to 5).
                     </p>
                   </div>
 
                   <div className="flex items-center gap-2 self-start sm:self-auto">
                     <span
-                      className={`text-xs font-bold px-3 py-1 rounded-xl border transition-colors ${
+                      className={`text-xs font-semibold px-2.5 py-1 rounded-lg border ${
                         allSkillsEvaluated
-                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                          : 'bg-zinc-100 text-zinc-700 border-zinc-200'
+                          ? 'bg-slate-900 text-white border-slate-900'
+                          : 'bg-slate-100 text-slate-700 border-slate-200'
                       }`}
                     >
                       {evaluatedCount} of {requiredSkills.length} Rated
@@ -719,7 +692,7 @@ export default function TechLeadEvaluationPortalPage({ params }) {
                 </div>
 
                 {/* List of Competency Cards */}
-                <div className="space-y-4">
+                <div className="space-y-3.5">
                   {requiredSkills.map((skill, index) => {
                     const currentScore = skillScores[skill];
                     const isScored = currentScore !== undefined;
@@ -728,44 +701,42 @@ export default function TechLeadEvaluationPortalPage({ params }) {
                     return (
                       <div
                         key={index}
-                        className={`border rounded-2xl p-5 transition-all duration-200 ${
+                        className={`border rounded-xl p-4 transition-all duration-150 ${
                           isScored
-                            ? 'border-zinc-300 bg-white shadow-2xs ring-1 ring-zinc-900/5'
-                            : 'border-zinc-200/80 bg-zinc-50/40 hover:bg-white hover:border-zinc-300'
+                            ? 'border-slate-300 bg-white'
+                            : 'border-slate-200 bg-slate-50/40 hover:bg-white hover:border-slate-300'
                         }`}
                       >
-                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 mb-3.5">
-                          <div className="flex items-center gap-3">
-                            <span className="w-7 h-7 rounded-xl bg-zinc-100 text-zinc-800 text-xs font-bold flex items-center justify-center border border-zinc-200">
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
+                          <div className="flex items-center gap-2.5">
+                            <span className="w-6 h-6 rounded bg-slate-100 text-slate-700 text-xs font-bold flex items-center justify-center border border-slate-200 shrink-0">
                               {index + 1}
                             </span>
-                            <div>
-                              <span className="font-extrabold text-base text-zinc-950">
-                                {skill}
-                              </span>
-                            </div>
+                            <span className="font-bold text-sm text-slate-900">
+                              {skill}
+                            </span>
                           </div>
 
-                          {/* Dynamic Feedback Tag */}
+                          {/* Feedback Tag */}
                           <div>
                             {isScored ? (
                               <span
-                                className={`inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1 rounded-xl border ${descriptor?.color}`}
+                                className={`inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-0.5 rounded border ${descriptor?.color}`}
                               >
                                 <span>Score {currentScore}</span>
                                 <span>•</span>
                                 <span>{descriptor?.label}</span>
                               </span>
                             ) : (
-                              <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-zinc-400 bg-zinc-100 px-2.5 py-0.5 rounded-lg">
-                                Pending rating
+                              <span className="text-[11px] text-slate-400 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+                                Unrated
                               </span>
                             )}
                           </div>
                         </div>
 
                         {/* Interactive 0 to 5 Rating Buttons */}
-                        <div className="grid grid-cols-6 gap-2 sm:gap-2.5">
+                        <div className="grid grid-cols-6 gap-2">
                           {[0, 1, 2, 3, 4, 5].map((score) => {
                             const isSelected = currentScore === score;
                             return (
@@ -773,12 +744,12 @@ export default function TechLeadEvaluationPortalPage({ params }) {
                                 key={score}
                                 type="button"
                                 onClick={() => handleScoreChange(skill, score)}
-                                className={`py-3 px-1 text-center rounded-xl font-extrabold text-sm sm:text-base transition-all duration-150 cursor-pointer ${
+                                className={`py-2.5 text-center rounded-lg text-sm font-bold transition-all duration-150 cursor-pointer ${
                                   isSelected
-                                    ? 'bg-zinc-950 text-white shadow-md ring-2 ring-zinc-950 ring-offset-2 scale-[1.02]'
-                                    : 'bg-white border border-zinc-200/90 text-zinc-700 hover:bg-zinc-100 hover:border-zinc-300 hover:text-zinc-950'
+                                    ? 'bg-slate-900 text-white border border-slate-900 shadow-sm'
+                                    : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300'
                                 }`}
-                                title={`Rate ${score} - ${scoreDescriptions[score].label}: ${scoreDescriptions[score].desc}`}
+                                title={`Rate ${score}: ${scoreDescriptions[score].label}`}
                               >
                                 <span>{score}</span>
                               </button>
@@ -786,9 +757,9 @@ export default function TechLeadEvaluationPortalPage({ params }) {
                           })}
                         </div>
 
-                        {/* Score helper on selection */}
+                        {/* Description helper on selection */}
                         {isScored && (
-                          <p className="text-[11px] text-zinc-500 mt-2.5 italic">
+                          <p className="text-[11px] text-slate-500 mt-2 italic">
                             {scoreDescriptions[currentScore].desc}
                           </p>
                         )}
@@ -799,23 +770,22 @@ export default function TechLeadEvaluationPortalPage({ params }) {
               </div>
 
               {/* Overall Recommendation Selector */}
-              <div className="bg-white border border-zinc-200/80 rounded-3xl p-6 sm:p-8 shadow-xs space-y-4">
-                <div className="space-y-1">
-                  <h3 className="text-base font-bold text-zinc-950 flex items-center gap-2">
-                    <Award className="w-5 h-5 text-zinc-700" />
-                    Overall Hiring Recommendation
+              <div className="bg-white border border-slate-200 rounded-2xl p-6 sm:p-7 shadow-xs space-y-3.5">
+                <div className="space-y-0.5">
+                  <h3 className="text-sm font-bold uppercase tracking-wider text-slate-900">
+                    Hiring Recommendation
                   </h3>
-                  <p className="text-xs text-zinc-500">
-                    Select your bottom-line technical verdict for this candidate.
+                  <p className="text-xs text-slate-500">
+                    Select your overall technical assessment recommendation.
                   </p>
                 </div>
 
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
                   {[
-                    { id: 'STRONG_HIRE', label: 'Strong Hire', color: 'border-emerald-500 bg-emerald-50 text-emerald-800' },
-                    { id: 'HIRE', label: 'Hire', color: 'border-blue-500 bg-blue-50 text-blue-800' },
-                    { id: 'BORDERLINE', label: 'Borderline', color: 'border-amber-500 bg-amber-50 text-amber-800' },
-                    { id: 'DO_NOT_HIRE', label: 'Do Not Hire', color: 'border-rose-500 bg-rose-50 text-rose-800' },
+                    { id: 'STRONG_HIRE', label: 'Strong Hire', color: 'border-emerald-600 bg-emerald-50 text-emerald-800' },
+                    { id: 'HIRE', label: 'Hire', color: 'border-blue-600 bg-blue-50 text-blue-800' },
+                    { id: 'BORDERLINE', label: 'Borderline', color: 'border-amber-600 bg-amber-50 text-amber-800' },
+                    { id: 'DO_NOT_HIRE', label: 'Do Not Hire', color: 'border-rose-600 bg-rose-50 text-rose-800' },
                   ].map((rec) => {
                     const isSelected = recommendation === rec.id;
                     return (
@@ -823,10 +793,10 @@ export default function TechLeadEvaluationPortalPage({ params }) {
                         key={rec.id}
                         type="button"
                         onClick={() => setRecommendation(isSelected ? null : rec.id)}
-                        className={`p-3 rounded-2xl border text-center text-xs font-bold transition-all cursor-pointer ${
+                        className={`p-3 rounded-xl border text-center text-xs font-semibold transition-all cursor-pointer ${
                           isSelected
-                            ? `${rec.color} ring-2 ring-offset-2 ring-zinc-900 shadow-xs font-black`
-                            : 'border-zinc-200 bg-white text-zinc-600 hover:bg-zinc-50 hover:border-zinc-300'
+                            ? `${rec.color} font-bold shadow-xs`
+                            : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50 hover:border-slate-300'
                         }`}
                       >
                         {rec.label}
@@ -836,96 +806,89 @@ export default function TechLeadEvaluationPortalPage({ params }) {
                 </div>
               </div>
 
-              {/* Interview Comments & Qualitative Notes */}
-              <div className="bg-white border border-zinc-200/80 rounded-3xl p-6 sm:p-8 shadow-xs space-y-4">
+              {/* Interview Comments */}
+              <div className="bg-white border border-slate-200 rounded-2xl p-6 sm:p-7 shadow-xs space-y-3">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <MessageSquare className="w-5 h-5 text-zinc-700" />
-                    <h3 className="text-base font-bold text-zinc-950">
-                      Technical Feedback &amp; Observations
-                    </h3>
-                  </div>
-                  <span className="text-[11px] text-zinc-400">
+                  <h3 className="text-sm font-bold uppercase tracking-wider text-slate-900">
+                    Technical Feedback &amp; Observations
+                  </h3>
+                  <span className="text-[11px] text-slate-400">
                     {notes.length} characters
                   </span>
                 </div>
 
-                <p className="text-xs text-zinc-500">
-                  Summarize key architectural strengths, live coding clarity, algorithmic problem-solving, and any red flags or areas of improvement.
+                <p className="text-xs text-slate-500">
+                  Summarize candidate technical competencies, code quality, architectural depth, and any concerns.
                 </p>
 
                 <textarea
                   rows={5}
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  placeholder="e.g. Demonstrates deep understanding of React concurrent features and Node.js microservices. Clean code during the live coding exercise. Architecture was modular, though database indexing knowledge could be strengthened..."
-                  className="w-full px-4 py-3.5 rounded-2xl border border-zinc-200 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-950 focus:border-zinc-950 transition-all placeholder:text-zinc-400 leading-relaxed bg-zinc-50/30 focus:bg-white"
+                  placeholder="e.g. Demonstrates strong core principles. Clean code design during the practical interview. Architected modular components, though query optimization knowledge could be deepened..."
+                  className="w-full px-4 py-3 rounded-xl border border-slate-200 text-xs focus:outline-none focus:border-slate-800 focus:ring-1 focus:ring-slate-800 transition-all placeholder:text-slate-400 leading-relaxed bg-white text-slate-900"
                   required
                 />
               </div>
 
-              {/* Live Score Summary & Real-Time Analytics Gauge */}
-              <div className="bg-zinc-950 text-white rounded-3xl p-6 sm:p-8 shadow-xl space-y-6">
-                <div className="flex items-center justify-between pb-4 border-b border-zinc-800">
-                  <div className="flex items-center gap-2.5">
-                    <Sparkles className="w-5 h-5 text-amber-400" />
-                    <h3 className="text-sm font-bold uppercase tracking-wider text-zinc-200">
-                      Live Assessment Calculation
-                    </h3>
-                  </div>
-                  <span className="text-[11px] text-zinc-400">
-                    Calculated in real-time from competency scores
+              {/* Assessment Summary Metric Card */}
+              <div className="bg-slate-900 text-white rounded-2xl p-6 sm:p-7 shadow-sm space-y-5">
+                <div className="flex items-center justify-between pb-3.5 border-b border-slate-800">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-300">
+                    Assessment Calculation
+                  </h3>
+                  <span className="text-[11px] text-slate-400">
+                    Computed from competency scores
                   </span>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
                   {/* Overall Score */}
                   <div className="space-y-1">
-                    <span className="text-[11px] font-bold text-zinc-400 block uppercase tracking-wider">
+                    <span className="text-[10px] font-bold text-slate-400 block uppercase tracking-wider">
                       Overall Score
                     </span>
                     <div className="flex items-baseline gap-1.5">
-                      <span className="text-3xl sm:text-4xl font-black text-white">
+                      <span className="text-3xl font-extrabold text-white">
                         {allSkillsEvaluated ? overallScore.toFixed(2) : '--'}
                       </span>
-                      <span className="text-sm font-semibold text-zinc-500">/ 5.0</span>
+                      <span className="text-xs text-slate-400 font-normal">/ 5.0</span>
                     </div>
-                    <p className="text-[11px] text-zinc-400">
-                      Target benchmark: ≥ 3.50
+                    <p className="text-[11px] text-slate-400">
+                      Benchmark: &ge; 3.50
                     </p>
                   </div>
 
                   {/* JD Match Percentage */}
                   <div className="space-y-1">
-                    <span className="text-[11px] font-bold text-zinc-400 block uppercase tracking-wider">
-                      Requisition Match
+                    <span className="text-[10px] font-bold text-slate-400 block uppercase tracking-wider">
+                      Role Match
                     </span>
                     <div className="flex items-baseline gap-1.5">
-                      <span className="text-3xl sm:text-4xl font-black text-emerald-400">
+                      <span className="text-3xl font-extrabold text-white">
                         {allSkillsEvaluated ? `${jdMatchPercentage}%` : '--%'}
                       </span>
                     </div>
-                    <p className="text-[11px] text-zinc-400">
+                    <p className="text-[11px] text-slate-400">
                       {allSkillsEvaluated
                         ? jdMatchPercentage >= 70
-                          ? 'Strong technical alignment'
-                          : 'Moderate technical alignment'
-                        : 'Rates all skills to unlock'}
+                          ? 'Satisfies role competencies'
+                          : 'Partial competency match'
+                        : 'Rate all competencies to calculate'}
                     </p>
                   </div>
 
                   {/* Rating Progress */}
                   <div className="space-y-2">
-                    <span className="text-[11px] font-bold text-zinc-400 block uppercase tracking-wider">
-                      Evaluation Progress
+                    <span className="text-[10px] font-bold text-slate-400 block uppercase tracking-wider">
+                      Progress
                     </span>
-                    <div className="text-sm font-extrabold text-zinc-200">
-                      {evaluatedCount} / {requiredSkills.length} Competencies Rated
+                    <div className="text-xs font-semibold text-slate-300">
+                      {evaluatedCount} of {requiredSkills.length} Rated
                     </div>
-                    {/* Progress Bar */}
-                    <div className="w-full bg-zinc-800 h-2.5 rounded-full overflow-hidden">
+                    <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
                       <div
-                        className="bg-gradient-to-r from-blue-500 to-emerald-400 h-full rounded-full transition-all duration-300"
+                        className="bg-slate-300 h-full rounded-full transition-all duration-300"
                         style={{
                           width: `${
                             requiredSkills.length > 0
@@ -940,28 +903,26 @@ export default function TechLeadEvaluationPortalPage({ params }) {
               </div>
 
               {/* Submission Action Bar */}
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-2">
-                <div className="w-full sm:w-auto">
-                  <Button
-                    type="submit"
-                    variant="primary"
-                    size="lg"
-                    isLoading={submitting}
-                    disabled={!allSkillsEvaluated}
-                    className="w-full sm:w-auto min-w-[240px] flex items-center justify-center gap-2 shadow-lg"
-                  >
-                    <Send className="w-4 h-4" />
-                    <span>Submit Technical Assessment</span>
-                  </Button>
-                </div>
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-1">
+                <Button
+                  type="submit"
+                  variant="primary"
+                  size="lg"
+                  isLoading={submitting}
+                  disabled={!allSkillsEvaluated}
+                  className="w-full sm:w-auto min-w-[220px] bg-slate-900 hover:bg-slate-800 text-white font-semibold py-3 px-6 rounded-xl"
+                >
+                  <Send className="w-4 h-4 mr-2 inline" />
+                  <span>Submit Evaluation</span>
+                </Button>
 
                 {!allSkillsEvaluated ? (
-                  <p className="text-xs text-amber-600 font-semibold text-center sm:text-right">
-                    * Score all {requiredSkills.length} competencies above to submit evaluation.
+                  <p className="text-xs text-slate-500 font-medium text-center sm:text-right">
+                    Please score all {requiredSkills.length} competencies above to complete the assessment.
                   </p>
                 ) : (
-                  <p className="text-xs text-emerald-600 font-semibold flex items-center gap-1.5">
-                    <CheckCircle2 className="w-4 h-4" />
+                  <p className="text-xs text-slate-600 font-medium flex items-center gap-1.5">
+                    <CheckCircle2 className="w-4 h-4 text-slate-700" />
                     All competencies scored. Ready for submission.
                   </p>
                 )}
@@ -971,9 +932,9 @@ export default function TechLeadEvaluationPortalPage({ params }) {
         )}
       </main>
 
-      {/* Footer */}
-      <footer className="border-t border-zinc-200 py-6 text-center text-xs text-zinc-400 bg-white">
-        RecruitFlow • Confidential Technical Interview Assessment Portal
+      {/* Corporate Footer */}
+      <footer className="border-t border-slate-200 py-5 text-center text-[11px] text-slate-400 bg-white">
+        RecruitFlow • Confidential Technical Assessment Portal
       </footer>
     </div>
   );

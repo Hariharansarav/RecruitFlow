@@ -5,13 +5,11 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
   ArrowLeft,
-  Sparkles,
   CheckCircle2,
   XCircle,
   Briefcase,
   User,
   AlertCircle,
-  Star,
   FileText,
   ExternalLink,
   Building2,
@@ -19,7 +17,6 @@ import {
   Clock,
   Calendar,
   Check,
-  Award,
   MessageSquare,
   Send,
   ShieldCheck,
@@ -377,14 +374,11 @@ export default function CompanyCandidateDetailsPage({ params }) {
         </div>
       )}
 
-      {/* Loading Skeleton */}
+      {/* Simple Loading State */}
       {loading && !error && (
-        <div className="space-y-6 animate-pulse">
-          <div className="bg-white border border-zinc-200 rounded-3xl p-6 shadow-xs h-28" />
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="bg-white border border-zinc-200 rounded-3xl p-6 shadow-xs h-64" />
-            <div className="bg-white border border-zinc-200 rounded-3xl p-6 shadow-xs h-64" />
-          </div>
+        <div className="py-20 text-center">
+          <div className="w-7 h-7 border-2 border-slate-300 border-t-slate-800 rounded-full animate-spin mx-auto mb-3" />
+          <p className="text-xs text-slate-500 font-medium">Loading candidate dossier...</p>
         </div>
       )}
 
@@ -571,17 +565,16 @@ export default function CompanyCandidateDetailsPage({ params }) {
               ? 'bg-amber-50/20 border-amber-200/90'
               : 'bg-rose-50/20 border-rose-200/90'
           }`}>
-            <div className="flex items-center justify-between flex-wrap gap-3">
-              <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold border shadow-xs ${
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-zinc-100">
+              <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-lg text-xs font-semibold border shadow-xs ${
                 matchPercentage >= 85
-                  ? 'bg-emerald-100/80 text-emerald-800 border-emerald-300'
+                  ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
                   : matchPercentage >= 70
-                  ? 'bg-blue-100/80 text-blue-800 border-blue-300'
+                  ? 'bg-blue-50 text-blue-800 border-blue-200'
                   : matchPercentage >= 50
-                  ? 'bg-amber-100/80 text-amber-800 border-amber-300'
-                  : 'bg-rose-100/80 text-rose-800 border-rose-300'
+                  ? 'bg-amber-50 text-amber-800 border-amber-200'
+                  : 'bg-rose-50 text-rose-800 border-rose-200'
               }`}>
-                <Sparkles className="w-3.5 h-3.5" />
                 <span>Candidate JD Match Performance</span>
               </div>
               <span className={`text-xs font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full border ${
@@ -599,16 +592,15 @@ export default function CompanyCandidateDetailsPage({ params }) {
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center">
               {/* Overall Skill Score */}
-              <div className="bg-white border border-zinc-200/90 rounded-2xl p-5 shadow-xs space-y-1">
-                <span className="text-xs font-semibold uppercase tracking-wider text-zinc-500 block">
+              <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs space-y-1">
+                <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 block">
                   Overall Skill Score
                 </span>
                 <div className="flex items-baseline justify-center gap-1.5 pt-1">
-                  <Star className="w-5 h-5 text-amber-500 fill-amber-500" />
-                  <span className="text-3xl font-black text-zinc-950">
+                  <span className="text-3xl font-bold text-slate-900">
                     {evaluation?.score !== undefined ? Number(evaluation.score).toFixed(1) : '--'}
                   </span>
-                  <span className="text-base text-zinc-400 font-semibold">/ 5</span>
+                  <span className="text-xs font-bold text-slate-400">/ 5.0</span>
                 </div>
               </div>
 
@@ -681,7 +673,7 @@ export default function CompanyCandidateDetailsPage({ params }) {
                   Skill-by-Skill Technical Evaluation
                 </h3>
                 <p className="text-xs text-zinc-500">
-                  Evaluated by Tech Lead {evaluation?.tech_lead?.name || candidate?.tech_lead?.name || 'Interviewer'} (Score scale: 0 to 5).
+                  Evaluated by Technical Interviewer {evaluation?.interviewer_email || candidate?.interviewer_email || 'Interviewer'} (Score scale: 0 to 5).
                 </p>
               </div>
             </div>
@@ -693,7 +685,7 @@ export default function CompanyCandidateDetailsPage({ params }) {
                   <div className="border border-zinc-200 rounded-2xl overflow-hidden divide-y divide-zinc-100">
                     <div className="bg-zinc-50/80 px-5 py-3 flex items-center justify-between text-xs font-semibold text-zinc-500 uppercase tracking-wider">
                       <span>Required Technical Skill</span>
-                      <span>Tech Lead Score</span>
+                      <span>Interviewer Score</span>
                     </div>
                     {evaluation.skills.map((s, idx) => {
                       const scoreNum = Number(s.score);
@@ -731,7 +723,7 @@ export default function CompanyCandidateDetailsPage({ params }) {
                 <div className="space-y-2">
                   <span className="text-xs font-semibold uppercase tracking-wider text-zinc-500 block flex items-center gap-1.5">
                     <MessageSquare className="w-3.5 h-3.5 text-zinc-400" />
-                    Tech Lead Feedback &amp; Observations
+                    Interviewer Feedback &amp; Observations
                   </span>
                   <div className="bg-zinc-50 p-5 rounded-2xl border border-zinc-200 text-zinc-800 text-sm leading-relaxed whitespace-pre-wrap">
                     &ldquo;{evaluation.notes}&rdquo;
@@ -739,10 +731,10 @@ export default function CompanyCandidateDetailsPage({ params }) {
                 </div>
 
                 {/* Evaluator Meta */}
-                {(evaluation.tech_lead || candidate?.tech_lead) ? (
+                {(evaluation.interviewer_email || candidate?.interviewer_email) ? (
                   <div className="text-xs text-zinc-600 flex items-center gap-2 pt-1 flex-wrap">
                     <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                    <span>Technical Evaluation by Tech Lead: <strong className="text-zinc-950">{evaluation.tech_lead?.name || candidate?.tech_lead?.name}</strong> ({evaluation.tech_lead?.email || candidate?.tech_lead?.email})</span>
+                    <span>Technical Evaluation by: <strong className="text-zinc-950">{evaluation.interviewer_email || candidate?.interviewer_email}</strong></span>
                     {(evaluation.updated_at || evaluation.created_at) && (
                       <>
                         <span>•</span>

@@ -23,7 +23,11 @@ export class InterviewInvitationsController {
   @Post()
   @HttpCode(HttpStatus.CREATED)
   async createOrGet(@Body() createDto: CreateInterviewInvitationDto) {
-    return this.interviewInvitationsService.createOrGetInvitation(createDto);
+    return this.interviewInvitationsService.createOrGetInvitation(
+      createDto,
+      createDto.interviewer_email,
+      createDto.interviewer_name,
+    );
   }
 
   /**
@@ -51,8 +55,19 @@ export class InterviewInvitationsController {
   @HttpCode(HttpStatus.OK)
   async sendInvitation(
     @Param('candidateId', ParseIntPipe) candidateId: number,
+    @Body()
+    body?: {
+      interviewer_email?: string;
+      interviewer_name?: string;
+      interview_date?: string;
+      interview_time?: string;
+      gmeet_link?: string;
+    },
   ) {
-    return this.interviewInvitationsService.sendInterviewInvitation(candidateId);
+    return this.interviewInvitationsService.sendInterviewInvitation(
+      candidateId,
+      body,
+    );
   }
 }
 

@@ -89,7 +89,7 @@ Ensure:
 - "department": Professional department name
 - "seniority_level": "${seniority.level}"
 - "experience_required": Descriptive experience range string matching ${dto.experience_years} years (e.g., "${dto.experience_years === 0 ? '0-1 years / Fresher' : dto.experience_years + '+ years'}")
-- "description": Engaging, professional summary of the opportunity and role
+- "description": Engaging, professional summary of the opportunity and role formatted strictly as a single cohesive paragraph. STRICTLY NO added elements: do NOT include markdown headers, bullet points, responsibilities, or qualification lists in this description field.
 - "required_skills": Array of distinct, relevant technical skills (case-normalized, no duplicates, no empty strings)
 - "responsibilities": Array of actionable, clear day-to-day duties appropriate for this experience level
 - "qualifications": Array of practical education and technical qualification requirements

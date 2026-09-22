@@ -9,14 +9,17 @@ import {
   AlertCircle,
   Copy,
   Check,
-  UserCheck,
+  User,
   Briefcase,
   ExternalLink,
   ShieldAlert,
+  Calendar,
+  Clock,
+  Video,
 } from 'lucide-react';
 import Button from '@/components/ui/Button';
 import interviewInvitationService from '@/services/interviewInvitationService';
-import emailService from '@/services/emailService';
+import candidateService from '@/services/candidateService';
 
 export default function SendMailModal({
   isOpen,
@@ -31,6 +34,19 @@ export default function SendMailModal({
   const [copied, setCopied] = useState(false);
   const [serverError, setServerError] = useState(null);
   const [successInfo, setSuccessInfo] = useState(null);
+  const [interviewerName, setInterviewerName] = useState('');
+  const [interviewerEmail, setInterviewerEmail] = useState('');
+
+  // Synchronize initial form state whenever candidate changes
+  useEffect(() => {
+    if (candidate) {
+      setInterviewerEmail(candidate.interviewer_email || '');
+      setInterviewerName(candidate.interviewer_name || '');
+    } else {
+      setInterviewerEmail('');
+      setInterviewerName('');
+    }
+  }, [candidate]);
 
   // Check for existing invitation when modal opens
   useEffect(() => {
@@ -42,7 +58,7 @@ export default function SendMailModal({
     setInvitation(null);
 
     let isMounted = true;
-    if (candidate.tech_lead_id || candidate.tech_lead) {
+    if (candidate.interviewer_email) {
       setLoadingExisting(true);
       interviewInvitationService
         .getInvitationByCandidateId(candidate.id)
@@ -75,20 +91,37 @@ export default function SendMailModal({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, loading, onClose]);
 
+  // Safe early return AFTER all hooks have executed
   if (!isOpen || !candidate) return null;
 
-  const techLead = candidate.tech_lead;
-  const hasTechLead = Boolean(techLead?.name && techLead?.email);
-  const isTechLeadActive = techLead?.status !== 'INACTIVE';
+  // RULE: Candidate moves to Stage 2 ONLY when resume matches 80% to JD
+  const matchScore = Number(candidate.ai_match_percentage ?? candidate.match_percentage ?? 0);
+  const isResumeMatched =
+    matchScore >= 80 &&
+    candidate.ai_screening_details?.recommendation !== 'POOR_MATCH';
 
-  const handleSendEmail = async () => {
-    if (!hasTechLead) {
-      setServerError('Please assign a Tech Lead before sending an interview invitation.');
+  const handleSendEmail = async (e) => {
+    e?.preventDefault();
+
+    if (!isResumeMatched) {
+      setServerError(
+        'Stage 2 Locked: Candidate resume does not match the JD (ATS match must be >= 80%). Invitation cannot be dispatched.',
+      );
       return;
     }
 
-    if (!isTechLeadActive) {
-      setServerError('Assigned Tech Lead is currently inactive. Please assign an active Tech Lead.');
+    const emailTrimmed = interviewerEmail.trim();
+    const nameTrimmed = interviewerName.trim();
+
+    if (!emailTrimmed) {
+      setServerError('Please enter the interviewer email address.');
+      return;
+    }
+
+    // Basic email format validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(emailTrimmed)) {
+      setServerError('Please enter a valid email address (e.g. interviewer@company.com).');
       return;
     }
 
@@ -96,17 +129,32 @@ export default function SendMailModal({
     setServerError(null);
 
     try {
-      // Dispatches invitation via backend Google OAuth2 + Gmail API
-      const result = await interviewInvitationService.sendInvitation(candidate.id);
-      const invData = result?.invitation || (await interviewInvitationService.getInvitationByCandidateId(candidate.id));
+      // 1. If candidate's interviewer_email is not saved yet, save it to the candidate record
+      if (candidate.interviewer_email !== emailTrimmed) {
+        await candidateService.updateCandidate(candidate.id, {
+          interviewer_email: emailTrimmed,
+        }).catch(() => null);
+      }
+
+      // 2. Dispatches invitation via backend Google OAuth2 + Gmail API
+      const result = await interviewInvitationService.sendInvitation(candidate.id, {
+        interviewer_email: emailTrimmed,
+        interviewer_name: nameTrimmed || undefined,
+      });
+
+      const invData =
+        result?.invitation ||
+        (await interviewInvitationService.getInvitationByCandidateId(candidate.id).catch(() => null));
       setInvitation(invData);
 
-      setSuccessInfo('Interview invitation email sent successfully to Tech Lead via Gmail!');
-      onSuccess?.('Interview invitation email sent to Tech Lead!');
+      setSuccessInfo(
+        `Interview invitation email successfully dispatched to ${nameTrimmed ? nameTrimmed + ' (' + emailTrimmed + ')' : emailTrimmed} via Gmail!`
+      );
+      onSuccess?.(`Invitation email sent to ${emailTrimmed}!`);
     } catch (err) {
       console.error('Failed to send interview invitation:', err);
       const msg =
-        err.response?.data?.message || err.message || 'Failed to dispatch invitation email.';
+        err.response?.data?.message || err.message || 'Failed to dispatch invitation email via Gmail.';
       setServerError(msg);
     } finally {
       setLoading(false);
@@ -128,22 +176,22 @@ export default function SendMailModal({
       aria-modal="true"
       aria-labelledby="send-mail-modal-title"
     >
-      <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl max-w-lg w-full p-6 sm:p-7 space-y-5 text-slate-900 overflow-y-auto max-h-[90vh]">
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-lg w-full p-6 sm:p-7 space-y-5 text-slate-900 animate-in fade-in zoom-in-95 duration-150">
         {/* Header */}
         <div className="flex items-start justify-between gap-4 pb-3 border-b border-slate-100">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 flex-shrink-0">
+            <div className="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-700">
               <Mail className="w-5 h-5" />
             </div>
             <div>
-              <h2
+              <h3
                 id="send-mail-modal-title"
-                className="text-lg sm:text-xl font-bold text-slate-900 tracking-tight"
+                className="text-lg font-bold text-slate-900 tracking-tight"
               >
                 Send Interview Invitation
-              </h2>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Dispatch technical evaluation link to the assigned interviewer.
+              </h3>
+              <p className="text-xs text-slate-500">
+                Email the technical interviewer via Gmail with secure evaluation link & resume
               </p>
             </div>
           </div>
@@ -157,198 +205,196 @@ export default function SendMailModal({
           </button>
         </div>
 
-        {/* Server Error Alert */}
+        {/* Server Feedback */}
         {serverError && (
-          <div className="p-3.5 rounded-xl bg-red-50 text-red-700 border border-red-200 text-xs sm:text-sm flex items-center gap-2.5">
-            <AlertCircle className="w-4 h-4 flex-shrink-0 text-red-500" />
-            <span>{serverError}</span>
+          <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center gap-2.5">
+            <AlertCircle className="w-4 h-4 flex-shrink-0 text-rose-600" />
+            <span className="leading-relaxed">{serverError}</span>
           </div>
         )}
 
-        {/* Success Alert */}
         {successInfo && (
-          <div className="p-3.5 rounded-xl bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs sm:text-sm flex items-center gap-2.5 animate-fade-in">
-            <CheckCircle2 className="w-4 h-4 flex-shrink-0 text-emerald-600" />
-            <span className="font-medium">{successInfo}</span>
+          <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs flex items-center gap-2.5 font-medium">
+            <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+            <span className="leading-relaxed">{successInfo}</span>
           </div>
         )}
 
-        {/* Candidate & Job Summary Card */}
-        <div className="p-4 rounded-2xl bg-zinc-50 border border-zinc-200/80 space-y-2.5">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
+        {/* Candidate Target Overview */}
+        <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center justify-between">
+          <div>
+            <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">
               Candidate
             </span>
-            <span className="text-xs font-mono px-2 py-0.5 rounded-md bg-zinc-200/70 text-zinc-700 font-semibold">
-              ID #{candidate.id}
-            </span>
+            <span className="text-sm font-bold text-slate-900">{candidate.name}</span>
+            <span className="text-xs text-slate-500 block">{candidate.job?.title || 'Position'}</span>
           </div>
-          <div className="text-sm font-bold text-zinc-950 flex items-center justify-between">
-            <span>{candidate.name}</span>
-            <span className="text-xs font-normal text-zinc-500 truncate max-w-[200px]">
-              {candidate.email}
+          <div className="text-right">
+            <span className="inline-flex items-center px-2.5 py-1 rounded text-xs font-bold bg-slate-100 border border-slate-200 text-slate-800">
+              {matchScore}% ATS Match
             </span>
-          </div>
-          <div className="flex items-center gap-2 text-xs text-zinc-600 pt-1 border-t border-zinc-200/60">
-            <Briefcase className="w-3.5 h-3.5 text-zinc-400" />
-            <span>Role:</span>
-            <span className="font-semibold text-zinc-800">
-              {candidate.job?.title || 'General Requisition'}
-            </span>
+            <span className="text-[10px] text-slate-400 block mt-1">Stage 2 Qualified</span>
           </div>
         </div>
 
-        {/* Tech Lead Recipient Details */}
-        <div className="space-y-2">
-          <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider">
-            Interviewer (Tech Lead)
-          </label>
-
-          {hasTechLead ? (
-            <div className="p-4 rounded-2xl border border-slate-200 bg-white shadow-xs space-y-2">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-xl bg-slate-100 text-slate-700 font-bold text-xs flex items-center justify-center">
-                    {techLead.name?.charAt(0) || 'T'}
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-bold text-zinc-950 leading-tight">
-                      {techLead.name}
-                    </h4>
-                    <p className="text-xs text-zinc-500 font-mono">
-                      {techLead.email}
-                    </p>
-                  </div>
-                </div>
-                <span
-                  className={`text-[11px] font-semibold px-2 py-0.5 rounded-full border ${
-                    isTechLeadActive
-                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                      : 'bg-rose-50 text-rose-700 border-rose-200'
-                  }`}
-                >
-                  {techLead.status || 'ACTIVE'}
+        {/* Stage 2 Interview Schedule Overview (if scheduled) */}
+        {(candidate.interview_date || candidate.gmeet_link) && (
+          <div className="p-3 rounded-2xl bg-blue-50/60 border border-blue-200 text-xs text-blue-900 space-y-1">
+            <span className="font-bold block uppercase tracking-wider text-[10px] text-blue-700">
+              Scheduled Interview Details
+            </span>
+            <div className="flex items-center gap-4 flex-wrap text-blue-800">
+              {candidate.interview_date && (
+                <span className="flex items-center gap-1">
+                  <Calendar className="w-3.5 h-3.5 text-blue-600" />
+                  {candidate.interview_date} {candidate.interview_time && `at ${candidate.interview_time}`}
                 </span>
-              </div>
-
-              {!isTechLeadActive && (
-                <div className="mt-2 p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-700 flex items-center justify-between">
-                  <span>Tech Lead is inactive. Reassign before sending.</span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      onClose?.();
-                      onOpenEditCandidate?.(candidate);
-                    }}
-                    className="font-semibold underline hover:text-rose-900 text-xs"
-                  >
-                    Edit
-                  </button>
-                </div>
+              )}
+              {candidate.gmeet_link && (
+                <a
+                  href={candidate.gmeet_link}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex items-center gap-1 text-blue-600 hover:underline font-semibold"
+                >
+                  <Video className="w-3.5 h-3.5" />
+                  Meet Link
+                </a>
               )}
             </div>
+          </div>
+        )}
+
+        {/* Interviewer Inputs Form */}
+        <form onSubmit={handleSendEmail} className="space-y-3">
+          {isResumeMatched ? (
+            <div className="p-4 rounded-xl border border-slate-200 bg-white shadow-xs space-y-3">
+              {/* Interviewer Name Field */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center gap-1.5">
+                  <User className="w-3.5 h-3.5 text-slate-400" />
+                  <span>Interviewer Full Name</span>
+                </label>
+                <input
+                  type="text"
+                  value={interviewerName}
+                  onChange={(e) => setInterviewerName(e.target.value)}
+                  placeholder="e.g. Sarah Jenkins (Tech Lead)"
+                  className="w-full px-3.5 py-2 rounded-xl border border-slate-300 focus:border-slate-800 focus:ring-2 focus:ring-slate-100 bg-white hover:border-slate-400 text-slate-900 text-sm focus:outline-none transition-all placeholder:text-slate-400"
+                />
+              </div>
+
+              {/* Interviewer Email Field */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center gap-1.5">
+                  <Mail className="w-3.5 h-3.5 text-slate-400" />
+                  <span>Interviewer Email Address <span className="text-rose-500">*</span></span>
+                </label>
+                <input
+                  type="email"
+                  required
+                  value={interviewerEmail}
+                  onChange={(e) => setInterviewerEmail(e.target.value)}
+                  placeholder="e.g. sarah.jenkins@company.com"
+                  className="w-full px-3.5 py-2 rounded-xl border border-slate-300 focus:border-slate-800 focus:ring-2 focus:ring-slate-100 bg-white hover:border-slate-400 text-slate-900 text-sm focus:outline-none transition-all placeholder:text-slate-400"
+                />
+              </div>
+
+              <p className="text-[11px] text-slate-500 leading-relaxed">
+                The evaluation link, candidate resume, and JD overview will be sent directly to this interviewer via the Gmail API.
+              </p>
+            </div>
           ) : (
-            <div className="p-4 rounded-2xl border border-amber-200 bg-amber-50/70 space-y-2.5">
+            <div className="p-4 rounded-xl border border-amber-200 bg-amber-50/70 space-y-2">
               <div className="flex items-start gap-2.5">
-                <ShieldAlert className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+                <ShieldAlert className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
                 <div>
                   <h4 className="text-xs font-bold text-amber-900">
-                    No Tech Lead Assigned
+                    Stage 2 Locked: Resume Does Not Meet 80% Threshold
                   </h4>
-                  <p className="text-xs text-amber-700 mt-0.5">
-                    An interview invitation email can only be dispatched to an assigned Tech Lead.
+                  <p className="text-xs text-amber-700 mt-0.5 leading-relaxed">
+                    This candidate scored {matchScore}% on AI resume screening. Candidate profiles must match at least 80% to advance to Stage 2 and have an interviewer invited.
                   </p>
                 </div>
               </div>
-              <Button
-                type="button"
-                variant="primary"
-                size="sm"
-                onClick={() => {
-                  onClose?.();
-                  onOpenEditCandidate?.(candidate);
-                }}
-                className="w-full text-xs"
-              >
-                Assign Tech Lead Now
-              </Button>
             </div>
           )}
-        </div>
 
-        {/* Evaluation Link Preview (if exists or generated) */}
-        {invitation?.evaluation_url && (
-          <div className="space-y-1.5 p-3.5 rounded-2xl bg-indigo-50/50 border border-indigo-100">
-            <div className="flex items-center justify-between text-xs">
-              <span className="font-semibold text-indigo-950 flex items-center gap-1.5">
-                <ExternalLink className="w-3.5 h-3.5 text-indigo-600" />
-                Secure Evaluation Link
-              </span>
-              <span className="text-[11px] text-indigo-600 font-medium">
-                Valid for 7 days
-              </span>
+          {/* Evaluation Link Preview (if exists or generated) */}
+          {invitation?.evaluation_url && (
+            <div className="space-y-1.5 p-3.5 rounded-xl bg-slate-50 border border-slate-200">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-semibold text-slate-900 flex items-center gap-1.5">
+                  <ExternalLink className="w-3.5 h-3.5 text-slate-600" />
+                  Secure Evaluation Link
+                </span>
+                <span className="text-[11px] text-slate-500 font-medium">
+                  Valid for 7 days
+                </span>
+              </div>
+              <div className="flex items-center gap-2 mt-1">
+                <input
+                  type="text"
+                  readOnly
+                  value={invitation.evaluation_url}
+                  className="flex-1 px-3 py-1.5 rounded-xl border border-slate-300 bg-white text-xs font-mono text-slate-800 truncate select-all focus:outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={handleCopyLink}
+                  className="px-3 py-1.5 rounded-xl bg-white hover:bg-slate-100 border border-slate-300 text-xs font-semibold text-slate-700 flex items-center gap-1.5 transition-colors"
+                  title="Copy Link"
+                >
+                  {copied ? (
+                    <>
+                      <Check className="w-3.5 h-3.5 text-emerald-600" />
+                      <span className="text-emerald-700">Copied</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-3.5 h-3.5" />
+                      <span>Copy</span>
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
-            <div className="flex items-center gap-2 mt-1">
-              <input
-                type="text"
-                readOnly
-                value={invitation.evaluation_url}
-                className="flex-1 px-3 py-1.5 rounded-xl border border-indigo-200 bg-white text-xs font-mono text-zinc-800 truncate select-all focus:outline-none"
-              />
-              <button
-                type="button"
-                onClick={handleCopyLink}
-                className="px-3 py-1.5 rounded-xl bg-white hover:bg-indigo-50 border border-indigo-200 text-xs font-semibold text-indigo-700 flex items-center gap-1.5 transition-colors"
-                title="Copy Link"
-              >
-                {copied ? (
-                  <>
-                    <Check className="w-3.5 h-3.5 text-emerald-600" />
-                    <span className="text-emerald-700">Copied</span>
-                  </>
-                ) : (
-                  <>
-                    <Copy className="w-3.5 h-3.5" />
-                    <span>Copy</span>
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
-        )}
+          )}
 
-        {/* Footer Actions */}
-        <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={onClose}
-            disabled={loading}
-          >
-            {successInfo ? 'Done' : 'Cancel'}
-          </Button>
-
-          {hasTechLead && isTechLeadActive && (
+          {/* Footer Actions */}
+          <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
             <Button
               type="button"
-              variant="primary"
-              loading={loading}
+              variant="secondary"
+              onClick={onClose}
               disabled={loading}
-              onClick={handleSendEmail}
-              className="flex items-center gap-2"
+              className="border-slate-300"
             >
-              <Send className="w-4 h-4" />
-              <span>
-                {loading
-                  ? 'Dispatching...'
-                  : invitation
-                  ? 'Resend Invitation'
-                  : 'Send Invitation Email'}
-              </span>
+              {successInfo ? 'Done' : 'Cancel'}
             </Button>
-          )}
-        </div>
+
+            {isResumeMatched && (
+              <Button
+                type="submit"
+                variant="primary"
+                loading={loading}
+                disabled={loading || !interviewerEmail.trim()}
+                className="flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs shadow-sm"
+              >
+                <Send className="w-4 h-4" />
+                <span>
+                  {loading
+                    ? 'Dispatching...'
+                    : invitation
+                    ? 'Resend Invitation'
+                    : 'Send Invitation Email'}
+                </span>
+              </Button>
+            )}
+          </div>
+        </form>
       </div>
     </div>
   );
 }
+

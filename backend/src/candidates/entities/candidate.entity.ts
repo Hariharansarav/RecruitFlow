@@ -10,7 +10,6 @@ import {
 import { Job } from '../../jobs/entities/job.entity';
 import { User } from '../../users/entities/user.entity';
 import { CandidateStatus } from '../enums/candidate-status.enum';
-import { TechLead } from '../../tech-leads/entities/tech-lead.entity';
 
 @Entity({ name: 'candidates' })
 export class Candidate {
@@ -29,8 +28,29 @@ export class Candidate {
   @Column({ type: 'text', default: '' })
   skills: string;
 
-  @Column({ type: 'varchar', length: 500, nullable: true })
+  @Column({ type: 'text', nullable: true })
   resume_url: string;
+
+  @Column({ type: 'text', nullable: true })
+  resume_text: string | null;
+
+  @Column({ type: 'float', nullable: true })
+  ai_match_percentage: number | null;
+
+  @Column({ type: 'text', nullable: true })
+  ai_screening_details: string | null;
+
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  interviewer_email: string | null;
+
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  interview_date: string | null;
+
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  interview_time: string | null;
+
+  @Column({ type: 'varchar', length: 500, nullable: true })
+  gmeet_link: string | null;
 
   @Column({
     type: 'enum',
@@ -52,16 +72,6 @@ export class Candidate {
   @ManyToOne(() => User, { nullable: true, onDelete: 'SET NULL' })
   @JoinColumn({ name: 'submitted_by_id' })
   submitted_by: User | null;
-
-  @Column({ name: 'tech_lead_id', type: 'integer', nullable: true })
-  tech_lead_id: number | null;
-
-  @ManyToOne(() => TechLead, (techLead) => techLead.candidates, {
-    nullable: true,
-    onDelete: 'SET NULL',
-  })
-  @JoinColumn({ name: 'tech_lead_id' })
-  tech_lead: TechLead | null;
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamp' })
   created_at: Date;

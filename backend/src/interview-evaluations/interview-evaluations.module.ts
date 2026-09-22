@@ -5,7 +5,6 @@ import { InterviewEvaluationSkill } from './entities/interview-evaluation-skill.
 import { Candidate } from '../candidates/entities/candidate.entity';
 import { Job } from '../jobs/entities/job.entity';
 import { User } from '../users/entities/user.entity';
-import { TechLead } from '../tech-leads/entities/tech-lead.entity';
 import { InterviewInvitation } from '../interview-invitations/entities/interview-invitation.entity';
 import { CandidatesModule } from '../candidates/candidates.module';
 import { UsersModule } from '../users/users.module';
@@ -20,7 +19,6 @@ import { InterviewEvaluationsService } from './interview-evaluations.service';
       Candidate,
       Job,
       User,
-      TechLead,
       InterviewInvitation,
     ]),
     CandidatesModule,
